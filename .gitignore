@@ -1,0 +1,19 @@
+node_modules
+dist
+.env
+.env.local
+.env.production
+*.log
+
+# Uploads and data
+uploads/videos/*
+!uploads/videos/.gitkeep
+uploads/metadata/*
+!uploads/metadata/.gitkeep
+data/*
+!data/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+

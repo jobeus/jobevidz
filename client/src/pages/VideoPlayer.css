@@ -1,0 +1,196 @@
+.video-player-container {
+  min-height: calc(100vh - 80px);
+  padding: 2rem;
+  background: #f5f5f5;
+}
+
+.video-player-card {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.video-wrapper {
+  width: 100%;
+  background: #000;
+}
+
+.video-element {
+  width: 100%;
+  max-height: 70vh;
+  display: block;
+}
+
+.video-info {
+  padding: 2rem;
+}
+
+.video-title {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.75rem;
+}
+
+.video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1.5rem;
+}
+
+.meta-item {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.meta-item a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.meta-item a:hover {
+  text-decoration: underline;
+}
+
+.video-description {
+  margin-bottom: 2rem;
+}
+
+.video-description h3 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.video-description p {
+  color: #666;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.video-share {
+  margin-bottom: 2rem;
+}
+
+.video-share h3 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.share-url-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  background: #f9f9f9;
+}
+
+.copy-button {
+  padding: 0.75rem 1.5rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.copy-button:hover {
+  background: #5568d3;
+}
+
+.video-technical {
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.video-technical h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.technical-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.technical-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.technical-label {
+  font-size: 0.85rem;
+  color: #888;
+  font-weight: 600;
+}
+
+.technical-value {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.error-message {
+  text-align: center;
+  padding: 2rem;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 5px;
+  color: #c33;
+  margin: 2rem;
+}
+
+@media (max-width: 768px) {
+  .video-player-container {
+    padding: 0;
+  }
+
+  .video-player-card {
+    border-radius: 0;
+  }
+
+  .video-info {
+    padding: 1.5rem;
+  }
+
+  .video-title {
+    font-size: 1.5rem;
+  }
+
+  .video-meta {
+    gap: 1rem;
+  }
+
+  .share-url-container {
+    flex-direction: column;
+  }
+
+  .technical-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

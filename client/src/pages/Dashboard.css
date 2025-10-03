@@ -1,0 +1,281 @@
+.dashboard-container {
+  min-height: calc(100vh - 80px);
+  padding: 2rem;
+  background: #f5f5f5;
+}
+
+.dashboard-header {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  color: #333;
+}
+
+.upload-link-button {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.upload-link-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.empty-state {
+  max-width: 500px;
+  margin: 4rem auto;
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.empty-state p {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.upload-button-large {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.upload-button-large:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.videos-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+.video-card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.video-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.video-thumbnail {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+
+.thumbnail-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-duration {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.video-card-content {
+  padding: 1.25rem;
+}
+
+.video-title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.video-card-title {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.1rem;
+  transition: color 0.3s;
+}
+
+.video-title-link:hover .video-card-title {
+  color: #667eea;
+}
+
+.video-card-description {
+  margin: 0 0 0.75rem 0;
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.video-card-meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.video-card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-button {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+}
+
+.action-button:hover {
+  opacity: 0.8;
+}
+
+.action-button.edit {
+  background: #ffc107;
+  color: #333;
+}
+
+.action-button.delete {
+  background: #f44336;
+  color: white;
+}
+
+.action-button.view {
+  background: #667eea;
+  color: white;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.edit-input,
+.edit-textarea {
+  padding: 0.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.edit-input:focus,
+.edit-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.save-button,
+.cancel-button {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.save-button {
+  background: #4caf50;
+  color: white;
+}
+
+.cancel-button {
+  background: #999;
+  color: white;
+}
+
+.save-button:hover,
+.cancel-button:hover {
+  opacity: 0.8;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.error-message {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  padding: 1rem;
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 5px;
+  color: #c33;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .upload-link-button {
+    text-align: center;
+  }
+
+  .videos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

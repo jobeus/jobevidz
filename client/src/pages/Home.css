@@ -1,0 +1,130 @@
+.home-container {
+  min-height: calc(100vh - 80px);
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 6rem 2rem;
+  text-align: center;
+  color: white;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  margin: 0 0 1rem 0;
+  font-weight: bold;
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  margin: 0 0 2.5rem 0;
+  opacity: 0.95;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero-button {
+  padding: 1rem 2.5rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hero-button.primary {
+  background: white;
+  color: #667eea;
+}
+
+.hero-button.secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+}
+
+.hero-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.features-section {
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.features-section h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin: 0 0 3rem 0;
+  color: #333;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  padding: 2rem;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+  font-size: 1.3rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .features-section h2 {
+    font-size: 2rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
