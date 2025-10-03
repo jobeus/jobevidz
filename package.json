@@ -10,6 +10,10 @@
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
     "start:server": "cd server && npm start",
+    "start:prod": "pm2 start ecosystem.config.js --env production",
+    "stop:prod": "pm2 stop jobevidz-api",
+    "restart:prod": "pm2 restart jobevidz-api",
+    "logs:prod": "pm2 logs jobevidz-api",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "keywords": ["video", "upload", "sharing", "platform"],

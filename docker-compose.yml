@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jobevidz-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - MAX_FILE_SIZE=1073741824
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    volumes:
+      # Persist user-generated content
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - jobevidz-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx (Frontend + Reverse Proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: jobevidz-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Serve built client files
+      - ./client/dist:/usr/share/nginx/html:ro
+      # Custom nginx configuration
+      - ./docker-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # SSL certificates (if using Let's Encrypt)
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+    networks:
+      - jobevidz-network
+
+networks:
+  jobevidz-network:
+    driver: bridge
+
+volumes:
+  uploads:
+  data:
+  logs:
+

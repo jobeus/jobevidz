@@ -3,12 +3,18 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import authRoutes from './routes/auth.js';
 import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
+
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,9 +24,44 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(cors());
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow video streaming
+}));
+
+// CORS configuration - restrict in production
+const allowedOrigins = isProduction
+  ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://yourdomain.com'])
+  : ['http://localhost:5173', 'http://localhost:5174'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 100 : 1000, // Limit each IP to 100 requests per windowMs in production
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', limiter);
+
+// Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,9 +73,51 @@ app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/v', shortUrlRoutes);
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Enhanced health check
+app.get('/health', async (_req, res) => {
+  const health: any = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+  };
+
+  try {
+    // Check FFmpeg
+    try {
+      await execAsync('ffmpeg -version');
+      health.ffmpeg = 'available';
+    } catch {
+      health.ffmpeg = 'unavailable';
+      health.status = 'degraded';
+    }
+
+    // Check yt-dlp
+    try {
+      await execAsync('yt-dlp --version');
+      health.ytdlp = 'available';
+    } catch {
+      health.ytdlp = 'unavailable';
+      health.status = 'degraded';
+    }
+
+    // Check disk space (uploads directory)
+    try {
+      const uploadsPath = path.join(__dirname, '../../uploads');
+      const { stdout } = await execAsync(`du -sh ${uploadsPath}`);
+      health.uploadsSize = stdout.split('\t')[0];
+    } catch {
+      health.uploadsSize = 'unknown';
+    }
+
+    res.json(health);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+    });
+  }
 });
 
 // Error handling
@@ -47,11 +130,33 @@ async function startServer() {
     await initializeTempDirectory();
     console.log('✅ Directories initialized');
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`📁 Uploads directory: ${path.join(__dirname, '../../uploads')}`);
       console.log(`📊 Data directory: ${path.join(__dirname, '../../data')}`);
     });
+
+    // Graceful shutdown
+    const gracefulShutdown = (signal: string) => {
+      console.log(`\n${signal} received. Starting graceful shutdown...`);
+
+      server.close(() => {
+        console.log('✅ HTTP server closed');
+        console.log('👋 Process terminated gracefully');
+        process.exit(0);
+      });
+
+      // Force shutdown after 10 seconds
+      setTimeout(() => {
+        console.error('⚠️  Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

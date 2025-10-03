@@ -1,0 +1,41 @@
+# JobeVidz Systemd Service File
+# Copy this file to /etc/systemd/system/jobevidz.service
+# 
+# Installation:
+#   sudo cp jobevidz.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable jobevidz
+#   sudo systemctl start jobevidz
+#
+# Commands:
+#   sudo systemctl status jobevidz
+#   sudo systemctl restart jobevidz
+#   sudo systemctl stop jobevidz
+#   sudo journalctl -u jobevidz -f
+
+[Unit]
+Description=JobeVidz Video Sharing Platform
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/jobevidz
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /var/www/jobevidz/server/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jobevidz
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/jobevidz/uploads /var/www/jobevidz/data /var/www/jobevidz/logs
+
+[Install]
+WantedBy=multi-user.target
+
