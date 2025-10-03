@@ -99,7 +99,7 @@ const VideoPlayer: React.FC = () => {
   };
 
   // Map format to proper MIME type
-  const getMimeType = (format: string, filename: string): string => {
+  const getMimeType = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
 
     // Map common extensions to MIME types
@@ -120,7 +120,7 @@ const VideoPlayer: React.FC = () => {
       <div className="video-player-card">
         <div className="video-wrapper">
           <video controls className="video-element">
-            <source src={videoUrl} type={getMimeType(video.format, video.filename)} />
+            <source src={videoUrl} type={getMimeType(video.filename)} />
             Your browser does not support the video tag.
           </video>
 

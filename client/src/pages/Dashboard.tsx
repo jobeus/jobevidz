@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { videoApi, getVideoUrl } from '../services/api';
 import type { VideoMetadata } from '../types/index';
-import { useAuth } from '../utils/AuthContext';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
@@ -12,7 +11,6 @@ const Dashboard: React.FC = () => {
   const [editingVideo, setEditingVideo] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const { user } = useAuth();
 
   useEffect(() => {
     fetchVideos();

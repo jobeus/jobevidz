@@ -43,9 +43,21 @@ const Upload: React.FC = () => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
+      // Create a proper FileList-like object
+      const fileList = {
+        0: droppedFile,
+        length: 1,
+        item: (index: number) => (index === 0 ? droppedFile : null),
+        [Symbol.iterator]: function* () {
+          yield droppedFile;
+        },
+      } as unknown as FileList;
+
       const fakeEvent = {
-        target: { files: [droppedFile] },
-      } as React.ChangeEvent<HTMLInputElement>;
+        target: { files: fileList },
+        currentTarget: { files: fileList },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+
       handleFileChange(fakeEvent);
     }
   };
