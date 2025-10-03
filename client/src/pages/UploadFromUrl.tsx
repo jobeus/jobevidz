@@ -161,34 +161,34 @@ const UploadFromUrl: React.FC = () => {
             <h2>Video Preview</h2>
             
             {/* Video Info */}
-            <div className="video-info">
-              <div className="video-preview">
+            <div className="upload-video-info">
+              <div className="upload-video-preview">
                 {previewData.streamUrl ? (
                   <video
                     controls
-                    className="preview-video"
+                    className="upload-preview-video"
                     preload="metadata"
                   >
                     <source src={previewData.streamUrl} type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
                 ) : (
-                  <div className="video-placeholder">
+                  <div className="upload-video-placeholder">
                     📹 Video preview loading...
                   </div>
                 )}
               </div>
-              
-              <div className="video-details">
+
+              <div className="upload-video-details">
                 <h3>{previewData.metadata.title}</h3>
-                <p className="video-uploader">By: {previewData.metadata.uploader}</p>
-                <div className="video-stats">
+                <p className="upload-video-uploader">By: {previewData.metadata.uploader}</p>
+                <div className="upload-video-stats">
                   <span>Duration: {formatDuration(previewData.metadata.duration)}</span>
                   <span>Resolution: {previewData.metadata.width}x{previewData.metadata.height}</span>
                   <span>Format: {previewData.metadata.format.toUpperCase()}</span>
                 </div>
                 {previewData.metadata.description && (
-                  <p className="video-description-preview">
+                  <p className="upload-video-description-preview">
                     {previewData.metadata.description.substring(0, 200)}
                     {previewData.metadata.description.length > 200 ? '...' : ''}
                   </p>
