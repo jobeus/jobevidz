@@ -5,9 +5,11 @@ dist
 .env.production
 *.log
 
-# Uploads and data
+# Uploads and data - user-generated content should never be committed
 uploads/videos/*
 !uploads/videos/.gitkeep
+uploads/temp/*
+!uploads/temp/.gitkeep
 uploads/metadata/*
 !uploads/metadata/.gitkeep
 data/*

@@ -130,7 +130,7 @@ const VideoPlayer: React.FC = () => {
             onClick={toggleTheatreMode}
             title={isTheatreMode ? 'Exit Theatre Mode' : 'Enter Theatre Mode'}
           >
-            {isTheatreMode ? '🔲' : '⛶'}
+            {isTheatreMode ? '⤢' : '⤡'}
           </button>
         </div>
 
