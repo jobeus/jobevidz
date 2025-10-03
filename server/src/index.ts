@@ -7,12 +7,14 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs/promises';
 import authRoutes from './routes/auth.js';
 import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
+import { logger } from './utils/logger.js';
 
 const execAsync = promisify(exec);
 
@@ -61,9 +63,9 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parsing middleware with size limits
+app.use(express.json({ limit: '10mb' })); // Limit JSON payloads
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve uploaded videos statically
 app.use('/uploads/videos', express.static(path.join(__dirname, '../../uploads/videos')));
@@ -110,8 +112,21 @@ app.get('/health', async (_req, res) => {
       health.uploadsSize = 'unknown';
     }
 
+    // Check write permissions
+    try {
+      const uploadsPath = path.join(__dirname, '../../uploads/videos');
+      const testFile = path.join(uploadsPath, '.write-test');
+      await fs.writeFile(testFile, 'test');
+      await fs.unlink(testFile);
+      health.writePermissions = 'ok';
+    } catch {
+      health.writePermissions = 'failed';
+      health.status = 'degraded';
+    }
+
     res.json(health);
   } catch (error) {
+    logger.error({ err: error }, 'Health check failed');
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
@@ -128,28 +143,30 @@ async function startServer() {
   try {
     await initializeDirectories();
     await initializeTempDirectory();
-    console.log('✅ Directories initialized');
+    logger.info('Directories initialized');
 
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📁 Uploads directory: ${path.join(__dirname, '../../uploads')}`);
-      console.log(`📊 Data directory: ${path.join(__dirname, '../../data')}`);
+      logger.info({
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        uploadsDir: path.join(__dirname, '../../uploads'),
+        dataDir: path.join(__dirname, '../../data'),
+      }, 'Server started successfully');
     });
 
     // Graceful shutdown
     const gracefulShutdown = (signal: string) => {
-      console.log(`\n${signal} received. Starting graceful shutdown...`);
+      logger.info({ signal }, 'Graceful shutdown initiated');
 
       server.close(() => {
-        console.log('✅ HTTP server closed');
-        console.log('👋 Process terminated gracefully');
+        logger.info('HTTP server closed');
+        logger.info('Process terminated gracefully');
         process.exit(0);
       });
 
       // Force shutdown after 10 seconds
       setTimeout(() => {
-        console.error('⚠️  Forced shutdown after timeout');
+        logger.error('Forced shutdown after timeout');
         process.exit(1);
       }, 10000);
     };
@@ -158,7 +175,7 @@ async function startServer() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.fatal({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 }

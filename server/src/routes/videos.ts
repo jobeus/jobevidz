@@ -26,6 +26,7 @@ import {
   cleanupTempFile,
   initializeTempDirectory,
 } from '../utils/urlDownloader.js';
+import { logger, logVideoUpload, logVideoDelete } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,13 +114,14 @@ router.post(
       await writeVideoMetadata(videoId, metadata);
       await mapShortIdToVideoId(shortId, videoId);
 
+      logVideoUpload(videoId, req.user.userId, req.file.size);
       res.status(201).json({
         message: 'Video uploaded successfully',
         video: metadata,
         url: `/v/${shortId}`,
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error({ err: error, userId: req.user?.userId }, 'Upload error');
       res.status(500).json({ error: 'Failed to upload video' });
     }
   }
@@ -246,7 +248,7 @@ router.get('/temp/:previewId', authenticateToken, async (req: AuthRequest, res: 
       stream.pipe(res);
     }
   } catch (error) {
-    console.error('Temp video serve error:', error);
+    logger.error({ err: error, previewId: req.params.previewId }, 'Temp video serve error');
     res.status(500).json({ error: 'Failed to serve video' });
   }
 });
@@ -339,7 +341,7 @@ router.get('/my-videos', authenticateToken, async (req: AuthRequest, res: Respon
 
     res.json({ videos: userVideos });
   } catch (error) {
-    console.error('Error fetching user videos:', error);
+    logger.error({ err: error, userId: req.user?.userId }, 'Error fetching user videos');
     res.status(500).json({ error: 'Failed to fetch videos' });
   }
 });
@@ -413,7 +415,7 @@ router.patch(
 
       res.json({ video: updatedMetadata });
     } catch (error) {
-      console.error('Error updating video:', error);
+      logger.error({ err: error, videoId: req.params.videoId, userId: req.user?.userId }, 'Error updating video');
       res.status(500).json({ error: 'Failed to update video' });
     }
   }
@@ -449,9 +451,10 @@ router.delete(
       await deleteVideoMetadata(videoId);
       await deleteShortIdMapping(metadata.shortId);
 
+      logVideoDelete(videoId, req.user.userId);
       res.json({ message: 'Video deleted successfully' });
     } catch (error) {
-      console.error('Error deleting video:', error);
+      logger.error({ err: error, videoId: req.params.videoId, userId: req.user?.userId }, 'Error deleting video');
       res.status(500).json({ error: 'Failed to delete video' });
     }
   }

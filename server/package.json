@@ -28,6 +28,8 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "nanoid": "^5.1.6",
+    "pino": "^10.0.0",
+    "pino-pretty": "^13.1.1",
     "yt-dlp-wrap": "^2.3.12"
   },
   "devDependencies": {

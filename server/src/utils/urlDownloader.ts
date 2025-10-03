@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -186,7 +187,7 @@ export async function cleanupTempFile(tempFilePath: string): Promise<void> {
     await fs.unlink(tempFilePath);
   } catch (error) {
     // Ignore cleanup errors
-    console.warn(`Failed to cleanup temp file ${tempFilePath}:`, error);
+    logger.warn({ err: error, tempFilePath }, 'Failed to cleanup temp file');
   }
 }
 

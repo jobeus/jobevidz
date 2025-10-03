@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { readUsers, writeUsers } from '../utils/fileStorage.js';
 import { hashPassword, verifyPassword, generateToken, sanitizeUser } from '../utils/auth.js';
 import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '../types/index.js';
+import { logger, logAuth } from '../utils/logger.js';
 
 const router = Router();
 
@@ -53,9 +54,10 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       user: sanitizeUser(newUser),
     };
 
+    logAuth('register', username, true);
     res.status(201).json(response);
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error({ err: error }, 'Registration error');
     res.status(500).json({ error: 'Failed to register user' });
   }
 });

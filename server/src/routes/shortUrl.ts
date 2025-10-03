@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getVideoIdFromShortId } from '../utils/idGenerator.js';
 import { readVideoMetadata } from '../utils/fileStorage.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
 
     res.json({ video: metadata });
   } catch (error) {
-    console.error('Error resolving short URL:', error);
+    logger.error({ err: error, shortId: req.params.shortId }, 'Error resolving short URL');
     res.status(500).json({ error: 'Failed to resolve short URL' });
   }
 });

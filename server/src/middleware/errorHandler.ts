@@ -1,12 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger.js';
 
 export function errorHandler(
   err: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  console.error('Error:', err);
+  logger.error({
+    err,
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+  }, 'Request error');
 
   if (res.headersSent) {
     return next(err);
