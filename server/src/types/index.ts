@@ -62,3 +62,28 @@ export interface AuthResponse {
   user: UserPublic;
 }
 
+export interface UrlVideoMetadata {
+  title: string;
+  description: string;
+  uploader: string;
+  duration: number;
+  width: number;
+  height: number;
+  format: string;
+  originalUrl: string;
+  thumbnailUrl?: string;
+  uploadDate?: string;
+}
+
+export interface UrlPreviewResponse {
+  metadata: UrlVideoMetadata;
+  previewId: string;
+  streamUrl?: string;
+}
+
+export interface UrlUploadRequest {
+  previewId: string;
+  title: string;
+  description: string;
+}
+

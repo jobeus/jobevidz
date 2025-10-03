@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { User, UserPublic } from '../types/index.js';
 
 const SALT_ROUNDS = 12;
@@ -15,11 +15,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function generateToken(userId: string, username: string): string {
-  return jwt.sign({ userId, username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign({ userId, username }, JWT_SECRET as string, { expiresIn: JWT_EXPIRES_IN });
 }
 
 export function verifyToken(token: string): { userId: string; username: string } {
-  return jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+  return jwt.verify(token, JWT_SECRET as string) as { userId: string; username: string };
 }
 
 export function sanitizeUser(user: User): UserPublic {

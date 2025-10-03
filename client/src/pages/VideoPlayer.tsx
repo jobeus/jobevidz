@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { videoApi, getVideoUrl } from '../services/api';
-import { VideoMetadata } from '../types';
+import type { VideoMetadata } from '../types/index';
 import './VideoPlayer.css';
 
 const VideoPlayer: React.FC = () => {
@@ -9,6 +9,7 @@ const VideoPlayer: React.FC = () => {
   const [video, setVideo] = useState<VideoMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isTheatreMode, setIsTheatreMode] = useState(false);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -73,36 +74,118 @@ const VideoPlayer: React.FC = () => {
     alert('Share URL copied to clipboard!');
   };
 
+  const downloadVideo = () => {
+    const link = document.createElement('a');
+    link.href = videoUrl;
+    link.download = video?.originalFilename || video?.filename || 'video';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const toggleTheatreMode = () => {
+    setIsTheatreMode(!isTheatreMode);
+  };
+
+  const normalizeFormat = (format: string): string => {
+    if (format.toLowerCase().includes('mp4')) {
+      return 'mp4';
+    }
+    return format;
+  };
+
+  // Map format to proper MIME type
+  const getMimeType = (format: string, filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase() || '';
+
+    // Map common extensions to MIME types
+    const mimeMap: { [key: string]: string } = {
+      'mp4': 'video/mp4',
+      'mov': 'video/quicktime',
+      'mkv': 'video/x-matroska',
+      'webm': 'video/webm',
+      'avi': 'video/x-msvideo',
+      'm4v': 'video/x-m4v',
+    };
+
+    return mimeMap[ext] || 'video/mp4';
+  };
+
   return (
-    <div className="video-player-container">
+    <div className={`video-player-container ${isTheatreMode ? 'theatre-mode' : ''}`}>
       <div className="video-player-card">
         <div className="video-wrapper">
           <video controls className="video-element">
-            <source src={videoUrl} type={`video/${video.format}`} />
+            <source src={videoUrl} type={getMimeType(video.format, video.filename)} />
             Your browser does not support the video tag.
           </video>
+
+          {/* Theatre mode toggle */}
+          <button
+            className="theatre-toggle"
+            onClick={toggleTheatreMode}
+            title={isTheatreMode ? 'Exit Theatre Mode' : 'Enter Theatre Mode'}
+          >
+            {isTheatreMode ? '🔲' : '⛶'}
+          </button>
         </div>
 
         <div className="video-info">
-          <h1 className="video-title">{video.title}</h1>
-          
-          <div className="video-meta">
-            <span className="meta-item">
-              👤 <Link to={`/user/${video.username}`}>{video.username}</Link>
-            </span>
-            <span className="meta-item">📅 {formatDate(video.uploadedAt)}</span>
-            <span className="meta-item">👁️ {video.width}×{video.height}</span>
-            <span className="meta-item">⏱️ {formatDuration(video.duration)}</span>
-            <span className="meta-item">💾 {formatFileSize(video.fileSize)}</span>
+          {/* Primary content - Title and Description */}
+          <div className="video-primary-info">
+            <h1 className="video-title">{video.title}</h1>
+
+            <div className="video-author-date">
+              <span className="author">
+                👤 <Link to={`/user/${video.username}`}>{video.username}</Link>
+              </span>
+              <span className="upload-date">📅 {formatDate(video.uploadedAt)}</span>
+            </div>
+
+            {video.description && (
+              <div className="video-description">
+                <p>{video.description}</p>
+              </div>
+            )}
           </div>
 
-          {video.description && (
-            <div className="video-description">
-              <h3>Description</h3>
-              <p>{video.description}</p>
-            </div>
-          )}
+          {/* Action buttons */}
+          <div className="video-actions">
+            <button onClick={downloadVideo} className="action-button download-button">
+              ⬇️ Download
+            </button>
+            <button onClick={copyShareUrl} className="action-button share-button">
+              📋 Copy Link
+            </button>
+          </div>
 
+          {/* Technical metadata grouped together */}
+          <div className="video-technical-meta">
+            <div className="technical-stats">
+              <span className="stat-item">
+                <span className="stat-label">Resolution:</span>
+                <span className="stat-value">{video.width}×{video.height}</span>
+              </span>
+              <span className="stat-item">
+                <span className="stat-label">Duration:</span>
+                <span className="stat-value">{formatDuration(video.duration)}</span>
+              </span>
+              <span className="stat-item">
+                <span className="stat-label">Size:</span>
+                <span className="stat-value">{formatFileSize(video.fileSize)}</span>
+              </span>
+              <span className="stat-item">
+                <span className="stat-label">Format:</span>
+                <span className="stat-value">{normalizeFormat(video.format)}</span>
+              </span>
+              <span className="stat-item">
+                <span className="stat-label">Codec:</span>
+                <span className="stat-value">{video.codec}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Share section */}
           <div className="video-share">
             <h3>Share this video</h3>
             <div className="share-url-container">
@@ -115,28 +198,6 @@ const VideoPlayer: React.FC = () => {
               <button onClick={copyShareUrl} className="copy-button">
                 📋 Copy
               </button>
-            </div>
-          </div>
-
-          <div className="video-technical">
-            <h3>Technical Details</h3>
-            <div className="technical-grid">
-              <div className="technical-item">
-                <span className="technical-label">Format:</span>
-                <span className="technical-value">{video.format}</span>
-              </div>
-              <div className="technical-item">
-                <span className="technical-label">Codec:</span>
-                <span className="technical-value">{video.codec}</span>
-              </div>
-              <div className="technical-item">
-                <span className="technical-label">Resolution:</span>
-                <span className="technical-value">{video.width}×{video.height}</span>
-              </div>
-              <div className="technical-item">
-                <span className="technical-label">Duration:</span>
-                <span className="technical-value">{formatDuration(video.duration)}</span>
-              </div>
             </div>
           </div>
         </div>

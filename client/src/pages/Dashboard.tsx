@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { videoApi, getVideoUrl } from '../services/api';
-import { VideoMetadata } from '../types';
+import type { VideoMetadata } from '../types/index';
 import { useAuth } from '../utils/AuthContext';
 import './Dashboard.css';
 

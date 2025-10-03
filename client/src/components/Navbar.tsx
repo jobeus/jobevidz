@@ -27,6 +27,9 @@ const Navbar: React.FC = () => {
               <Link to="/upload" className="navbar-link">
                 Upload
               </Link>
+              <Link to="/upload-url" className="navbar-link">
+                Upload from URL
+              </Link>
               <span className="navbar-user">👤 {user.username}</span>
               <button onClick={handleLogout} className="navbar-button">
                 Logout

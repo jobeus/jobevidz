@@ -4,7 +4,7 @@ import path from 'path';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
 import { authenticateToken } from '../middleware/auth.js';
-import { AuthRequest, VideoMetadata, VideoMetadataUpdate } from '../types/index.js';
+import { AuthRequest, VideoMetadata, VideoMetadataUpdate, UrlPreviewResponse, UrlUploadRequest } from '../types/index.js';
 import {
   writeVideoMetadata,
   readVideoMetadata,
@@ -19,6 +19,12 @@ import {
   mapShortIdToVideoId,
   deleteShortIdMapping,
 } from '../utils/idGenerator.js';
+import {
+  downloadVideoFromUrl,
+  moveVideoToFinal,
+  cleanupTempFile,
+  initializeTempDirectory,
+} from '../utils/urlDownloader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +34,7 @@ const router = Router();
 // Configure multer for video uploads
 const storage = multer.diskStorage({
   destination: path.join(__dirname, '../../../uploads/videos'),
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const uniqueId = nanoid();
     const ext = path.extname(file.originalname);
     cb(null, `${uniqueId}${ext}`);
@@ -40,7 +46,7 @@ const upload = multer({
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE || '1073741824'), // 1GB default
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedMimes = [
       'video/mp4',
       'video/quicktime',
@@ -114,6 +120,145 @@ router.post(
     } catch (error) {
       console.error('Upload error:', error);
       res.status(500).json({ error: 'Failed to upload video' });
+    }
+  }
+);
+
+// Store for temporary downloads (in production, use Redis or database)
+const tempDownloads = new Map<string, { filePath: string; metadata: any; timestamp: number }>();
+
+// Cleanup old temp downloads (older than 1 hour)
+setInterval(() => {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  for (const [previewId, data] of tempDownloads.entries()) {
+    if (data.timestamp < oneHourAgo) {
+      cleanupTempFile(data.filePath).catch(console.error);
+      tempDownloads.delete(previewId);
+    }
+  }
+}, 15 * 60 * 1000); // Run every 15 minutes
+
+// Preview video from URL
+router.post(
+  '/url-preview',
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const { url } = req.body;
+      if (!url || typeof url !== 'string') {
+        res.status(400).json({ error: 'URL is required' });
+        return;
+      }
+
+      // Initialize temp directory
+      await initializeTempDirectory();
+
+      // Download video to temp location (this also extracts metadata)
+      const downloadResult = await downloadVideoFromUrl(url);
+
+      // Generate preview ID
+      const previewId = nanoid();
+
+      // Store temp download info
+      tempDownloads.set(previewId, {
+        filePath: downloadResult.tempFilePath,
+        metadata: downloadResult.metadata,
+        timestamp: Date.now(),
+      });
+
+      const response: UrlPreviewResponse = {
+        metadata: downloadResult.metadata,
+        previewId,
+        // Note: streamUrl would require additional streaming setup
+        // For now, we'll rely on thumbnail for preview
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error('URL preview error:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to preview video from URL'
+      });
+    }
+  }
+);
+
+// Upload video from URL (finalize)
+router.post(
+  '/url-upload',
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const { previewId, title, description }: UrlUploadRequest = req.body;
+
+      if (!previewId || !title) {
+        res.status(400).json({ error: 'Preview ID and title are required' });
+        return;
+      }
+
+      // Get temp download info
+      const tempData = tempDownloads.get(previewId);
+      if (!tempData) {
+        res.status(404).json({ error: 'Preview not found or expired' });
+        return;
+      }
+
+      // Move video to final location
+      const { filename: finalFilename, fileSize, normalizedFormat } = await moveVideoToFinal(tempData.filePath, tempData.metadata.format);
+
+      // Extract video metadata using FFmpeg
+      const finalPath = getVideoPath(finalFilename);
+      const extractedMetadata = await extractVideoMetadata(finalPath);
+
+      // Generate IDs
+      const videoId = nanoid();
+      const shortId = await generateUniqueShortId();
+
+      // Create metadata object
+      const metadata: VideoMetadata = {
+        id: videoId,
+        shortId,
+        userId: req.user.userId,
+        username: req.user.username,
+        filename: finalFilename,
+        originalFilename: `${tempData.metadata.title}.${tempData.metadata.format}`,
+        title: title,
+        description: description || tempData.metadata.description || '',
+        fileSize: fileSize,
+        duration: extractedMetadata.duration || tempData.metadata.duration,
+        width: extractedMetadata.width || tempData.metadata.width,
+        height: extractedMetadata.height || tempData.metadata.height,
+        format: normalizedFormat,
+        codec: extractedMetadata.codec,
+        uploadedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save metadata
+      await writeVideoMetadata(videoId, metadata);
+      await mapShortIdToVideoId(shortId, videoId);
+
+      // Clean up temp data
+      tempDownloads.delete(previewId);
+
+      res.status(201).json({
+        message: 'Video uploaded successfully from URL',
+        video: metadata,
+        url: `/v/${shortId}`,
+      });
+    } catch (error) {
+      console.error('URL upload error:', error);
+      res.status(500).json({ error: 'Failed to upload video from URL' });
     }
   }
 );

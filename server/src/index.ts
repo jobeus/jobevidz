@@ -8,6 +8,7 @@ import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
+import { initializeTempDirectory } from './utils/urlDownloader.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,7 +33,7 @@ app.use('/api/videos', videoRoutes);
 app.use('/v', shortUrlRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -43,6 +44,7 @@ app.use(errorHandler);
 async function startServer() {
   try {
     await initializeDirectories();
+    await initializeTempDirectory();
     console.log('✅ Directories initialized');
 
     app.listen(PORT, () => {

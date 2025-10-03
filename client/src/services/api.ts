@@ -1,11 +1,14 @@
-import axios, { AxiosProgressEvent } from 'axios';
-import {
+import axios from 'axios';
+import type { AxiosProgressEvent } from 'axios';
+import type {
   AuthResponse,
   LoginCredentials,
   RegisterCredentials,
   VideoMetadata,
   VideoUploadResponse,
-} from '../types';
+  UrlPreviewResponse,
+  UrlUploadRequest,
+} from '../types/index';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -98,6 +101,17 @@ export const videoApi = {
 
   deleteVideo: async (videoId: string): Promise<void> => {
     await api.delete(`/api/videos/${videoId}`);
+  },
+
+  // URL-based upload methods
+  previewFromUrl: async (url: string): Promise<UrlPreviewResponse> => {
+    const response = await api.post<UrlPreviewResponse>('/api/videos/url-preview', { url });
+    return response.data;
+  },
+
+  uploadFromUrl: async (request: UrlUploadRequest): Promise<VideoUploadResponse> => {
+    const response = await api.post<VideoUploadResponse>('/api/videos/url-upload', request);
+    return response.data;
   },
 };
 

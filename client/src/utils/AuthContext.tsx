@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
+import type { User } from '../types/index';
 import { authApi } from '../services/api';
 
 interface AuthContextType {
@@ -14,13 +14,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const verifyToken = async () => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
+        setIsLoading(true);
         try {
           const response = await authApi.verify();
           setUser(response.user);
@@ -30,9 +31,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
+        } finally {
+          setIsLoading(false);
         }
       }
-      setIsLoading(false);
     };
 
     verifyToken();

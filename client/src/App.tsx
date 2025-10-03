@@ -1,5 +1,4 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './utils/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -8,13 +7,14 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
+import UploadFromUrl from './pages/UploadFromUrl';
 import VideoPlayer from './pages/VideoPlayer';
 import './App.css';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <BrowserRouter>
         <div className="app">
           <Navbar />
           <Routes>
@@ -37,10 +37,18 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/upload-url"
+              element={
+                <ProtectedRoute>
+                  <UploadFromUrl />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/v/:shortId" element={<VideoPlayer />} />
           </Routes>
         </div>
-      </Router>
+      </BrowserRouter>
     </AuthProvider>
   );
 }
