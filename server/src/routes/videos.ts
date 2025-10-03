@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs/promises';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
 import { authenticateToken } from '../middleware/auth.js';
@@ -174,8 +175,7 @@ router.post(
       const response: UrlPreviewResponse = {
         metadata: downloadResult.metadata,
         previewId,
-        // Note: streamUrl would require additional streaming setup
-        // For now, we'll rely on thumbnail for preview
+        streamUrl: `/api/videos/temp/${previewId}`,
       };
 
       res.json(response);
@@ -187,6 +187,69 @@ router.post(
     }
   }
 );
+
+// Serve temporary video for preview
+router.get('/temp/:previewId', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    const { previewId } = req.params;
+    const tempData = tempDownloads.get(previewId);
+
+    if (!tempData) {
+      res.status(404).json({ error: 'Preview not found or expired' });
+      return;
+    }
+
+    // Check if file exists
+    try {
+      await fs.access(tempData.filePath);
+    } catch {
+      res.status(404).json({ error: 'Video file not found' });
+      return;
+    }
+
+    // Set appropriate headers for video streaming
+    const stat = await fs.stat(tempData.filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      // Handle range requests for video streaming
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+
+      res.status(206);
+      res.set({
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize.toString(),
+        'Content-Type': 'video/mp4',
+      });
+
+      // Stream the requested range
+      const stream = (await import('fs')).createReadStream(tempData.filePath, { start, end });
+      stream.pipe(res);
+    } else {
+      // Serve entire file
+      res.set({
+        'Content-Length': fileSize.toString(),
+        'Content-Type': 'video/mp4',
+      });
+
+      const stream = (await import('fs')).createReadStream(tempData.filePath);
+      stream.pipe(res);
+    }
+  } catch (error) {
+    console.error('Temp video serve error:', error);
+    res.status(500).json({ error: 'Failed to serve video' });
+  }
+});
 
 // Upload video from URL (finalize)
 router.post(

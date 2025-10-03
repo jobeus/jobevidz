@@ -162,16 +162,19 @@ const UploadFromUrl: React.FC = () => {
             
             {/* Video Info */}
             <div className="video-info">
-              <div className="video-thumbnail">
-                {previewData.metadata.thumbnailUrl ? (
-                  <img 
-                    src={previewData.metadata.thumbnailUrl} 
-                    alt="Video thumbnail"
-                    className="thumbnail-image"
-                  />
+              <div className="video-preview">
+                {previewData.streamUrl ? (
+                  <video
+                    controls
+                    className="preview-video"
+                    preload="metadata"
+                  >
+                    <source src={previewData.streamUrl} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
                 ) : (
-                  <div className="thumbnail-placeholder">
-                    📹 No thumbnail available
+                  <div className="video-placeholder">
+                    📹 Video preview loading...
                   </div>
                 )}
               </div>

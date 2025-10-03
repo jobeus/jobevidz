@@ -10,6 +10,7 @@ const VideoPlayer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isTheatreMode, setIsTheatreMode] = useState(false);
+  const [copyButtonText, setCopyButtonText] = useState('📋 Copy Link');
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -71,7 +72,10 @@ const VideoPlayer: React.FC = () => {
 
   const copyShareUrl = () => {
     navigator.clipboard.writeText(shareUrl);
-    alert('Share URL copied to clipboard!');
+    setCopyButtonText('Copied ✓');
+    setTimeout(() => {
+      setCopyButtonText('📋 Copy Link');
+    }, 2500);
   };
 
   const downloadVideo = () => {
@@ -131,8 +135,8 @@ const VideoPlayer: React.FC = () => {
         </div>
 
         <div className="video-info">
-          {/* Primary content - Title and Description */}
-          <div className="video-primary-info">
+          {/* Primary content area - full width */}
+          <div className="video-primary-content">
             <h1 className="video-title">{video.title}</h1>
 
             <div className="video-author-date">
@@ -149,55 +153,38 @@ const VideoPlayer: React.FC = () => {
             )}
           </div>
 
-          {/* Action buttons */}
-          <div className="video-actions">
-            <button onClick={downloadVideo} className="action-button download-button">
-              ⬇️ Download
-            </button>
-            <button onClick={copyShareUrl} className="action-button share-button">
-              📋 Copy Link
-            </button>
-          </div>
-
-          {/* Technical metadata grouped together */}
-          <div className="video-technical-meta">
-            <div className="technical-stats">
-              <span className="stat-item">
-                <span className="stat-label">Resolution:</span>
-                <span className="stat-value">{video.width}×{video.height}</span>
-              </span>
-              <span className="stat-item">
-                <span className="stat-label">Duration:</span>
-                <span className="stat-value">{formatDuration(video.duration)}</span>
-              </span>
-              <span className="stat-item">
-                <span className="stat-label">Size:</span>
-                <span className="stat-value">{formatFileSize(video.fileSize)}</span>
-              </span>
-              <span className="stat-item">
-                <span className="stat-label">Format:</span>
-                <span className="stat-value">{normalizeFormat(video.format)}</span>
-              </span>
-              <span className="stat-item">
-                <span className="stat-label">Codec:</span>
-                <span className="stat-value">{video.codec}</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Share section */}
-          <div className="video-share">
-            <h3>Share this video</h3>
-            <div className="share-url-container">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="share-url-input"
-              />
-              <button onClick={copyShareUrl} className="copy-button">
-                📋 Copy
+          {/* Action buttons and metadata in single row */}
+          <div className="video-actions-meta-row">
+            <div className="action-buttons">
+              <button onClick={downloadVideo} className="action-button download-button">
+                ⬇️ Download
               </button>
+              <button onClick={copyShareUrl} className={`action-button copy-button ${copyButtonText.includes('✓') ? 'copied' : ''}`}>
+                {copyButtonText}
+              </button>
+            </div>
+
+            <div className="technical-metadata">
+              <span className="meta-item">
+                <span className="meta-label">Resolution:</span>
+                <span className="meta-value">{video.width}×{video.height}</span>
+              </span>
+              <span className="meta-item">
+                <span className="meta-label">Duration:</span>
+                <span className="meta-value">{formatDuration(video.duration)}</span>
+              </span>
+              <span className="meta-item">
+                <span className="meta-label">Size:</span>
+                <span className="meta-value">{formatFileSize(video.fileSize)}</span>
+              </span>
+              <span className="meta-item">
+                <span className="meta-label">Format:</span>
+                <span className="meta-value">{normalizeFormat(video.format)}</span>
+              </span>
+              <span className="meta-item">
+                <span className="meta-label">Codec:</span>
+                <span className="meta-value">{video.codec}</span>
+              </span>
             </div>
           </div>
         </div>
