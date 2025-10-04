@@ -11,9 +11,18 @@ A modern, production-ready video upload and sharing platform built with Node.js,
 - **📹 Multiple Formats**: Support for MP4, MOV, MKV, AVI, and WebM video formats
 - **🔗 Short URLs**: Automatically generated 5-character alphanumeric short URLs for easy sharing
 - **📊 Metadata Extraction**: Automatic extraction of video metadata (resolution, duration, format, codec)
+- **🖼️ Automatic Thumbnails**: FFmpeg-powered thumbnail generation (720p) for all uploaded videos
 - **🎬 HTML5 Player**: Cross-browser compatible video player with controls
 - **📱 API Ready**: RESTful API designed for future mobile app integration
 - **🎨 Modern UI**: Clean, responsive interface built with React
+
+### Social Media Integration
+- **📱 Open Graph Meta Tags**: Rich previews on Facebook, LinkedIn, Discord, Slack, and more
+- **🐦 Twitter Card Support**: Twitter Player Card with embedded video player
+- **🔗 oEmbed Support**: JSON and XML endpoints for automatic embed generation
+- **🎥 Embeddable Player**: Dedicated `/embed/:shortId` route for iframe embedding
+- **🤖 Crawler Detection**: Server-side meta tag injection for social media bots
+- **🖼️ Rich Previews**: Thumbnails, titles, and descriptions in all shared links
 
 ### Production Features
 - **🔒 Environment-Based CORS**: Hardcoded production domains for security
@@ -45,7 +54,9 @@ jobevidz/
 │   └── package.json
 ├── uploads/         # Video files and metadata
 │   ├── videos/      # Uploaded video files
-│   └── metadata/    # JSON metadata files
+│   ├── thumbnails/  # Auto-generated video thumbnails
+│   ├── metadata/    # JSON metadata files
+│   └── temp/        # Temporary downloads for URL uploads
 └── data/            # User data and short URL mappings
 ```
 
@@ -312,8 +323,9 @@ server {
 
 ---
 
-## 📡 API Documentation
+## 📡 Documentation
 
+### API Documentation
 See [API.md](./API.md) for complete API documentation including:
 - Authentication endpoints
 - Video upload (file and URL-based)
@@ -321,6 +333,23 @@ See [API.md](./API.md) for complete API documentation including:
 - Health checks
 - Rate limiting
 - Error responses
+
+### Social Media Sharing
+See [SOCIAL_SHARING.md](./SOCIAL_SHARING.md) for comprehensive documentation on:
+- Open Graph meta tags implementation
+- oEmbed endpoints (JSON/XML)
+- Embeddable video player
+- Platform-specific behavior (Discord, Twitter, Facebook, etc.)
+- Security considerations
+- Troubleshooting guide
+
+### Testing Guide
+See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for step-by-step testing instructions:
+- Quick start testing
+- Social media platform testing
+- Debug tools and validators
+- Common issues and solutions
+- Success criteria checklist
 
 ---
 
@@ -383,16 +412,20 @@ Use the `/health` endpoint for:
 
 ## 🎯 Future Enhancements
 
-- Video thumbnails generation
+- ✅ ~~Video thumbnails generation~~ (Implemented!)
+- ✅ ~~Social sharing integrations~~ (Implemented!)
 - Video transcoding for multiple quality options
 - User profiles and avatars
 - Video comments and likes
 - Search functionality
 - Video playlists
 - Mobile apps (iOS/Android)
-- Social sharing integrations
 - Analytics dashboard
 - Video privacy settings (public/private/unlisted)
+- Video preview clips (first 5-10 seconds)
+- Custom thumbnail upload
+- Animated GIF previews
+- Closed captions/subtitles support
 
 ---
 
