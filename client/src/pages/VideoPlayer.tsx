@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { videoApi, getVideoUrl } from '../services/api';
+import { Helmet } from 'react-helmet-async';
+import { videoApi, getVideoUrl, getThumbnailUrl } from '../services/api';
 import type { VideoMetadata } from '../types/index';
 import './VideoPlayer.css';
 
@@ -47,6 +48,10 @@ const VideoPlayer: React.FC = () => {
 
   const videoUrl = getVideoUrl(video.filename);
   const shareUrl = `${window.location.origin}/v/${video.shortId}`;
+  const embedUrl = `${window.location.origin}/embed/${video.shortId}`;
+  const thumbnailUrl = video.thumbnailFilename
+    ? getThumbnailUrl(video.thumbnailFilename)
+    : null;
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -116,23 +121,74 @@ const VideoPlayer: React.FC = () => {
   };
 
   return (
-    <div className={`video-player-container ${isTheatreMode ? 'theatre-mode' : ''}`}>
-      <div className="video-player-card">
-        <div className="video-wrapper">
-          <video controls className="video-element">
-            <source src={videoUrl} type={getMimeType(video.filename)} />
-            Your browser does not support the video tag.
-          </video>
+    <>
+      <Helmet>
+        {/* Primary Meta Tags */}
+        <title>{video.title} - JobeVidz</title>
+        <meta name="title" content={video.title} />
+        <meta name="description" content={video.description || `Watch ${video.title} on JobeVidz`} />
 
-          {/* Theatre mode toggle */}
-          <button
-            className="theatre-toggle"
-            onClick={toggleTheatreMode}
-            title={isTheatreMode ? 'Exit Theatre Mode' : 'Enter Theatre Mode'}
-          >
-            {isTheatreMode ? '⤢' : '⤡'}
-          </button>
-        </div>
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="video.other" />
+        <meta property="og:url" content={shareUrl} />
+        <meta property="og:title" content={video.title} />
+        <meta property="og:description" content={video.description || `Watch ${video.title} on JobeVidz`} />
+        <meta property="og:site_name" content="JobeVidz" />
+        {thumbnailUrl && <meta property="og:image" content={thumbnailUrl} />}
+        {thumbnailUrl && <meta property="og:image:secure_url" content={thumbnailUrl} />}
+        {thumbnailUrl && <meta property="og:image:type" content="image/jpeg" />}
+        {thumbnailUrl && <meta property="og:image:width" content="1280" />}
+        {thumbnailUrl && <meta property="og:image:height" content="720" />}
+
+        {/* Video Meta Tags */}
+        <meta property="og:video" content={videoUrl} />
+        <meta property="og:video:secure_url" content={videoUrl} />
+        <meta property="og:video:type" content="video/mp4" />
+        <meta property="og:video:width" content={String(video.width)} />
+        <meta property="og:video:height" content={String(video.height)} />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="player" />
+        <meta name="twitter:url" content={shareUrl} />
+        <meta name="twitter:title" content={video.title} />
+        <meta name="twitter:description" content={video.description || `Watch ${video.title} on JobeVidz`} />
+        {thumbnailUrl && <meta name="twitter:image" content={thumbnailUrl} />}
+        <meta name="twitter:player" content={embedUrl} />
+        <meta name="twitter:player:width" content={String(video.width)} />
+        <meta name="twitter:player:height" content={String(video.height)} />
+        <meta name="twitter:player:stream" content={videoUrl} />
+        <meta name="twitter:player:stream:content_type" content="video/mp4" />
+
+        {/* oEmbed Discovery */}
+        <link rel="alternate" type="application/json+oembed"
+              href={`${window.location.origin}/oembed?url=${encodeURIComponent(shareUrl)}&format=json`}
+              title={video.title} />
+        <link rel="alternate" type="text/xml+oembed"
+              href={`${window.location.origin}/oembed?url=${encodeURIComponent(shareUrl)}&format=xml`}
+              title={video.title} />
+
+        {/* Additional Meta */}
+        <meta name="author" content={video.username} />
+        <meta name="duration" content={String(Math.floor(video.duration))} />
+      </Helmet>
+
+      <div className={`video-player-container ${isTheatreMode ? 'theatre-mode' : ''}`}>
+        <div className="video-player-card">
+          <div className="video-wrapper">
+            <video controls className="video-element">
+              <source src={videoUrl} type={getMimeType(video.filename)} />
+              Your browser does not support the video tag.
+            </video>
+
+            {/* Theatre mode toggle */}
+            <button
+              className="theatre-toggle"
+              onClick={toggleTheatreMode}
+              title={isTheatreMode ? 'Exit Theatre Mode' : 'Enter Theatre Mode'}
+            >
+              {isTheatreMode ? '⤢' : '⤡'}
+            </button>
+          </div>
 
         <div className="video-info">
           {/* Primary content area - full width */}
@@ -190,6 +246,7 @@ const VideoPlayer: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

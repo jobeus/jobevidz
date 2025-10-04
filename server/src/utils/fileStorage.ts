@@ -9,12 +9,14 @@ const DATA_DIR = path.join(__dirname, '../../../data');
 const UPLOAD_DIR = path.join(__dirname, '../../../uploads');
 const VIDEOS_DIR = path.join(UPLOAD_DIR, 'videos');
 const METADATA_DIR = path.join(UPLOAD_DIR, 'metadata');
+const THUMBNAILS_DIR = path.join(UPLOAD_DIR, 'thumbnails');
 
 // Ensure directories exist
 export async function initializeDirectories(): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.mkdir(VIDEOS_DIR, { recursive: true });
   await fs.mkdir(METADATA_DIR, { recursive: true });
+  await fs.mkdir(THUMBNAILS_DIR, { recursive: true });
 }
 
 // User storage functions
@@ -102,8 +104,22 @@ export function getVideoPath(filename: string): string {
   return path.join(VIDEOS_DIR, filename);
 }
 
+// Get thumbnail file path
+export function getThumbnailPath(filename: string): string {
+  return path.join(THUMBNAILS_DIR, filename);
+}
+
 // Delete video file
 export async function deleteVideoFile(filename: string): Promise<void> {
   await fs.unlink(getVideoPath(filename));
+}
+
+// Delete thumbnail file
+export async function deleteThumbnailFile(filename: string): Promise<void> {
+  try {
+    await fs.unlink(getThumbnailPath(filename));
+  } catch (error) {
+    // Ignore errors if thumbnail doesn't exist
+  }
 }
 

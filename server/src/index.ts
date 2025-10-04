@@ -11,6 +11,8 @@ import fs from 'fs/promises';
 import authRoutes from './routes/auth.js';
 import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
+import oembedRoutes from './routes/oembed.js';
+import embedRoutes from './routes/embed.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
@@ -29,9 +31,18 @@ const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow video streaming
-}));
+app.use((req, res, next) => {
+  // Allow embedding for /embed routes
+  if (req.path.startsWith('/embed/')) {
+    return next();
+  }
+
+  // Apply helmet for other routes
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow video streaming
+    contentSecurityPolicy: false, // Disable CSP to allow embedding
+  })(req, res, next);
+});
 
 // CORS configuration - restrict in production
 const allowedOrigins = isProduction
@@ -67,13 +78,16 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' })); // Limit JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded videos statically
+// Serve uploaded videos and thumbnails statically
 app.use('/uploads/videos', express.static(path.join(__dirname, '../../uploads/videos')));
+app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../../uploads/thumbnails')));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/v', shortUrlRoutes);
+app.use('/oembed', oembedRoutes);
+app.use('/embed', embedRoutes);
 
 // Enhanced health check
 app.get('/health', async (_req, res) => {

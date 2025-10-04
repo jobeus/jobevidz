@@ -36,6 +36,7 @@ export interface VideoMetadata {
   height: number;
   format: string;
   codec: string;
+  thumbnailFilename?: string;
   uploadedAt: string;
   updatedAt: string;
 }

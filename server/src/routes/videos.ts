@@ -13,8 +13,9 @@ import {
   getVideoPath,
   deleteVideoFile,
   deleteVideoMetadata,
+  deleteThumbnailFile,
 } from '../utils/fileStorage.js';
-import { extractVideoMetadata } from '../utils/videoMetadata.js';
+import { extractVideoMetadata, generateThumbnail } from '../utils/videoMetadata.js';
 import {
   generateUniqueShortId,
   mapShortIdToVideoId,
@@ -90,6 +91,18 @@ router.post(
       const filePath = req.file.path;
       const extractedMetadata = await extractVideoMetadata(filePath);
 
+      // Generate thumbnail
+      let thumbnailFilename: string | undefined;
+      try {
+        const thumbnailName = `${videoId}.jpg`;
+        // Generate thumbnail at 1 second or 10% of duration, whichever is smaller
+        const thumbnailTime = Math.min(1, extractedMetadata.duration * 0.1);
+        thumbnailFilename = await generateThumbnail(filePath, thumbnailName, thumbnailTime);
+      } catch (error) {
+        logger.warn({ err: error, videoId }, 'Failed to generate thumbnail');
+        // Continue without thumbnail
+      }
+
       // Create metadata object
       const metadata: VideoMetadata = {
         id: videoId,
@@ -106,6 +119,7 @@ router.post(
         height: extractedMetadata.height,
         format: extractedMetadata.format,
         codec: extractedMetadata.codec,
+        thumbnailFilename,
         uploadedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -289,6 +303,18 @@ router.post(
       const videoId = nanoid();
       const shortId = await generateUniqueShortId();
 
+      // Generate thumbnail
+      let thumbnailFilename: string | undefined;
+      try {
+        const thumbnailName = `${videoId}.jpg`;
+        const duration = extractedMetadata.duration || tempData.metadata.duration;
+        const thumbnailTime = Math.min(1, duration * 0.1);
+        thumbnailFilename = await generateThumbnail(finalPath, thumbnailName, thumbnailTime);
+      } catch (error) {
+        logger.warn({ err: error, videoId }, 'Failed to generate thumbnail');
+        // Continue without thumbnail
+      }
+
       // Create metadata object
       const metadata: VideoMetadata = {
         id: videoId,
@@ -305,6 +331,7 @@ router.post(
         height: extractedMetadata.height || tempData.metadata.height,
         format: normalizedFormat,
         codec: extractedMetadata.codec,
+        thumbnailFilename,
         uploadedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -446,8 +473,11 @@ router.delete(
         return;
       }
 
-      // Delete video file, metadata, and short ID mapping
+      // Delete video file, thumbnail, metadata, and short ID mapping
       await deleteVideoFile(metadata.filename);
+      if (metadata.thumbnailFilename) {
+        await deleteThumbnailFile(metadata.thumbnailFilename);
+      }
       await deleteVideoMetadata(videoId);
       await deleteShortIdMapping(metadata.shortId);
 

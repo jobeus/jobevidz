@@ -119,3 +119,7 @@ export const getVideoUrl = (filename: string): string => {
   return `${API_BASE_URL}/uploads/videos/${filename}`;
 };
 
+export const getThumbnailUrl = (filename: string): string => {
+  return `${API_BASE_URL}/uploads/thumbnails/${filename}`;
+};
+
