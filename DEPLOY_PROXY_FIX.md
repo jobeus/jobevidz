@@ -12,6 +12,11 @@ Firefox was showing "No video with supported format and MIME type found" because
 
 **Changed:** Added middleware to explicitly set proper MIME types for video files before serving them statically.
 
+### 3. Temp Video Preview Authentication
+The `/api/videos/temp/:previewId` route required authentication, but HTML `<video>` tags can't send Authorization headers, so the video preview returned HTML error pages instead of video data.
+
+**Changed:** Removed authentication requirement from temp video route. Security is maintained through the previewId being a cryptographically secure random token (nanoid) that's hard to guess, and temp files expire after 1 hour.
+
 ## Deploy to Remote Server
 
 Run these commands on your **remote server** (`koala`):
@@ -109,5 +114,6 @@ function getCommonYtDlpArgs(): string[] {
 
 - `server/src/utils/urlDownloader.ts` - Moved YTDLP_PROXY read to runtime
 - `server/src/index.ts` - Added MIME type middleware for video files
+- `server/src/routes/videos.ts` - Removed auth requirement from temp video route
 - `server/dist/` - Compiled output (auto-generated)
 

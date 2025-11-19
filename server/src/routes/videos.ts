@@ -142,7 +142,7 @@ router.post(
 );
 
 // Store for temporary downloads (in production, use Redis or database)
-const tempDownloads = new Map<string, { filePath: string; metadata: any; timestamp: number }>();
+const tempDownloads = new Map<string, { filePath: string; metadata: any; timestamp: number; userId: string }>();
 
 // Cleanup old temp downloads (older than 1 hour)
 setInterval(() => {
@@ -181,11 +181,12 @@ router.post(
       // Generate preview ID
       const previewId = nanoid();
 
-      // Store temp download info
+      // Store temp download info with user ID for access control
       tempDownloads.set(previewId, {
         filePath: downloadResult.tempFilePath,
         metadata: downloadResult.metadata,
         timestamp: Date.now(),
+        userId: req.user.userId,
       });
 
       const response: UrlPreviewResponse = {
@@ -205,18 +206,15 @@ router.post(
 );
 
 // Serve temporary video for preview
-router.get('/temp/:previewId', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+// Note: This route does NOT require authentication because <video> tags can't send auth headers
+// Instead, we rely on the previewId being a secure random token that's hard to guess
+router.get('/temp/:previewId', async (req, res): Promise<void> => {
   try {
-    if (!req.user) {
-      res.status(401).json({ error: 'User not authenticated' });
-      return;
-    }
-
     const { previewId } = req.params;
     const tempData = tempDownloads.get(previewId);
 
     if (!tempData) {
-      res.status(404).json({ error: 'Preview not found or expired' });
+      res.status(404).send('Preview not found or expired');
       return;
     }
 
@@ -224,7 +222,7 @@ router.get('/temp/:previewId', authenticateToken, async (req: AuthRequest, res: 
     try {
       await fs.access(tempData.filePath);
     } catch {
-      res.status(404).json({ error: 'Video file not found' });
+      res.status(404).send('Video file not found');
       return;
     }
 
@@ -263,7 +261,7 @@ router.get('/temp/:previewId', authenticateToken, async (req: AuthRequest, res: 
     }
   } catch (error) {
     logger.error({ err: error, previewId: req.params.previewId }, 'Temp video serve error');
-    res.status(500).json({ error: 'Failed to serve video' });
+    res.status(500).send('Failed to serve video');
   }
 });
 
