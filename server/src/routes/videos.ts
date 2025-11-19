@@ -190,8 +190,11 @@ router.post(
       });
 
       // Build absolute URL for video streaming
-      // Use API_BASE_URL from env if set, otherwise construct from request
-      const baseUrl = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`;
+      // Must use API_BASE_URL env variable to ensure correct domain
+      const baseUrl = process.env.API_BASE_URL;
+      if (!baseUrl) {
+        throw new Error('API_BASE_URL environment variable is not set');
+      }
 
       const response: UrlPreviewResponse = {
         metadata: downloadResult.metadata,
