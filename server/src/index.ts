@@ -79,6 +79,25 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' })); // Limit JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Middleware to set proper MIME types for video files
+app.use('/uploads/videos', (req, res, next) => {
+  const ext = path.extname(req.path).toLowerCase();
+  const mimeTypes: { [key: string]: string } = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.mkv': 'video/x-matroska',
+    '.webm': 'video/webm',
+    '.avi': 'video/x-msvideo',
+    '.m4v': 'video/x-m4v',
+  };
+
+  if (mimeTypes[ext]) {
+    res.setHeader('Content-Type', mimeTypes[ext]);
+  }
+
+  next();
+});
+
 // Serve uploaded videos and thumbnails statically
 app.use('/uploads/videos', express.static(path.join(__dirname, '../../uploads/videos')));
 app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../../uploads/thumbnails')));

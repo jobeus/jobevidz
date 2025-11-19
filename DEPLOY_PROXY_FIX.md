@@ -1,10 +1,16 @@
-# Deploy Proxy Fix
+# Deploy Proxy Fix + Video MIME Type Fix
 
 ## What Was Fixed
 
+### 1. Proxy Environment Variable Loading
 The `YTDLP_PROXY` environment variable wasn't being read because it was loaded at module import time, before `dotenv.config()` ran.
 
 **Changed:** Moved the `process.env.YTDLP_PROXY` read from module-level to inside the `getCommonYtDlpArgs()` function so it reads the value at runtime after dotenv has loaded the `.env` file.
+
+### 2. Video MIME Type for Firefox
+Firefox was showing "No video with supported format and MIME type found" because Express.static wasn't always setting the correct `Content-Type` header.
+
+**Changed:** Added middleware to explicitly set proper MIME types for video files before serving them statically.
 
 ## Deploy to Remote Server
 
@@ -102,5 +108,6 @@ function getCommonYtDlpArgs(): string[] {
 ## Files Modified
 
 - `server/src/utils/urlDownloader.ts` - Moved YTDLP_PROXY read to runtime
-- `server/dist/utils/urlDownloader.js` - Compiled output (auto-generated)
+- `server/src/index.ts` - Added MIME type middleware for video files
+- `server/dist/` - Compiled output (auto-generated)
 
