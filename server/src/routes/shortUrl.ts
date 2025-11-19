@@ -2,15 +2,52 @@ import { Router, Request, Response } from 'express';
 import { getVideoIdFromShortId } from '../utils/idGenerator.js';
 import { readVideoMetadata } from '../utils/fileStorage.js';
 import { logger } from '../utils/logger.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = Router();
+
+// Cache the client index.html template
+let clientIndexTemplate: string | null = null;
+
+async function getClientIndexTemplate(): Promise<string> {
+  if (clientIndexTemplate) {
+    return clientIndexTemplate;
+  }
+
+  // Path to the built client index.html
+  const indexPath = path.join(__dirname, '../../../client/dist/index.html');
+
+  try {
+    clientIndexTemplate = await fs.readFile(indexPath, 'utf-8');
+    return clientIndexTemplate;
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to read client index.html');
+    // Return a basic fallback
+    return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JobeVidz</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>`;
+  }
+}
 
 
 
 /**
- * Generate HTML with Open Graph and Twitter Card meta tags for a video
+ * Generate meta tags to inject into the client HTML
  */
-function generateVideoMetaHTML(
+function generateMetaTags(
   video: any,
   baseUrl: string,
   videoUrl: string,
@@ -33,12 +70,7 @@ function generateVideoMetaHTML(
   const description = escapeHtml(video.description || `Watch ${video.title} on JobeVidz`);
   const siteName = 'JobeVidz';
 
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  return `
     <!-- Primary Meta Tags -->
     <title>${title}</title>
     <meta name="title" content="${title}" />
@@ -102,44 +134,7 @@ function generateVideoMetaHTML(
 
     <!-- Canonical URL -->
     <link rel="canonical" href="${shareUrl}" />
-
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        margin: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-      }
-      .container {
-        text-align: center;
-        padding: 2rem;
-      }
-      h1 {
-        font-size: 2rem;
-        margin-bottom: 1rem;
-      }
-      p {
-        font-size: 1.2rem;
-        opacity: 0.9;
-      }
-      .loading {
-        margin-top: 2rem;
-        font-size: 3rem;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="loading">🎬</div>
-      <h1>${title}</h1>
-      <p>Video preview for social media</p>
-    </div>
-  </body>
-</html>`;
+  `;
 }
 
 // Get video by short ID - returns HTML with meta tags by default, JSON if requested
@@ -170,8 +165,8 @@ router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Default: serve HTML with meta tags for everyone (crawlers, browsers, validators, etc.)
-    const userAgent = req.get('user-agent');
+    // Serve HTML with meta tags for everyone (crawlers AND browsers)
+    const userAgent = req.get('user-agent') || '';
     logger.info({ shortId, userAgent }, 'Serving HTML with meta tags');
 
     // Build URLs
@@ -183,10 +178,24 @@ router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
       ? `${baseUrl}/uploads/thumbnails/${metadata.thumbnailFilename}`
       : null;
 
-    // Generate and send HTML with meta tags
-    const html = generateVideoMetaHTML(metadata, baseUrl, videoUrl, thumbnailUrl);
+    // Get the client index.html template
+    const clientHtml = await getClientIndexTemplate();
+
+    // Generate meta tags
+    const metaTags = generateMetaTags(metadata, baseUrl, videoUrl, thumbnailUrl);
+
+    // Inject meta tags into the <head> section
+    // Replace the existing <title> and inject our meta tags after <head>
+    const htmlWithMeta = clientHtml.replace(
+      /<head>/i,
+      `<head>${metaTags}`
+    ).replace(
+      /<title>.*?<\/title>/i,
+      '' // Remove the default title since we're injecting our own
+    );
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    res.send(htmlWithMeta);
   } catch (error) {
     logger.error({ err: error, shortId: req.params.shortId }, 'Error resolving short URL');
     res.status(500).json({ error: 'Failed to resolve short URL' });
