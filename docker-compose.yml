@@ -17,6 +17,7 @@ services:
       - JWT_EXPIRES_IN=7d
       - MAX_FILE_SIZE=1073741824
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - YTDLP_PROXY=${YTDLP_PROXY}
     volumes:
       # Persist user-generated content
       - ./uploads:/app/uploads

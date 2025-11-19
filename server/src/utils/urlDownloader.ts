@@ -13,6 +13,23 @@ const __dirname = path.dirname(__filename);
 const TEMP_DIR = path.join(__dirname, '../../../uploads/temp');
 const VIDEOS_DIR = path.join(__dirname, '../../../uploads/videos');
 
+// Get proxy configuration from environment variable
+const YTDLP_PROXY = process.env.YTDLP_PROXY;
+
+/**
+ * Get common yt-dlp arguments including proxy if configured
+ */
+function getCommonYtDlpArgs(): string[] {
+  const args: string[] = [];
+
+  if (YTDLP_PROXY) {
+    args.push('--proxy', YTDLP_PROXY);
+    logger.info({ proxy: YTDLP_PROXY }, 'Using proxy for yt-dlp');
+  }
+
+  return args;
+}
+
 // Ensure temp directory exists
 export async function initializeTempDirectory(): Promise<void> {
   await fs.mkdir(TEMP_DIR, { recursive: true });
@@ -42,11 +59,16 @@ export interface DownloadedVideo {
  */
 export async function extractUrlMetadata(url: string): Promise<UrlVideoMetadata> {
   const ytDlp = new YTDlpWrap();
-  
+
   try {
     // Get video info without downloading
-    const info = await ytDlp.getVideoInfo(url);
-    
+    // Note: getVideoInfo internally calls yt-dlp, so we need to use execPromise with --dump-json instead
+    const commonArgs = getCommonYtDlpArgs();
+    const args = [...commonArgs, '--dump-json', '--no-playlist', url];
+
+    const output = await ytDlp.execPromise(args);
+    const info = JSON.parse(output);
+
     return {
       title: info.title || 'Untitled Video',
       description: info.description || '',
@@ -70,36 +92,41 @@ export async function extractUrlMetadata(url: string): Promise<UrlVideoMetadata>
 export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo> {
   const ytDlp = new YTDlpWrap();
   const tempId = nanoid();
-  
+
   try {
     // First get metadata
     const metadata = await extractUrlMetadata(url);
-    
+
     // Create temp filename
     const tempFilename = `${tempId}.%(ext)s`;
     const tempFilePath = path.join(TEMP_DIR, tempFilename);
-    
+
+    // Get common args (including proxy if configured)
+    const commonArgs = getCommonYtDlpArgs();
+
     // Download options
     const downloadOptions = [
+      ...commonArgs,
       '--format', 'best[ext=mp4]/best', // Prefer mp4, fallback to best available
       '--output', tempFilePath,
       '--no-playlist', // Only download single video
       '--max-filesize', '1G', // Respect 1GB limit
+      url,
     ];
-    
+
     // Download the video
-    await ytDlp.execPromise([url, ...downloadOptions]);
-    
+    await ytDlp.execPromise(downloadOptions);
+
     // Find the actual downloaded file (yt-dlp replaces %(ext)s with actual extension)
     const tempDir = await fs.readdir(TEMP_DIR);
     const downloadedFile = tempDir.find(file => file.startsWith(tempId));
-    
+
     if (!downloadedFile) {
       throw new Error('Downloaded file not found');
     }
-    
+
     const actualTempFilePath = path.join(TEMP_DIR, downloadedFile);
-    
+
     return {
       tempFilePath: actualTempFilePath,
       filename: downloadedFile,
@@ -110,11 +137,11 @@ export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo
     try {
       const tempDir = await fs.readdir(TEMP_DIR);
       const partialFiles = tempDir.filter(file => file.startsWith(tempId));
-      await Promise.all(partialFiles.map(file => 
+      await Promise.all(partialFiles.map(file =>
         fs.unlink(path.join(TEMP_DIR, file)).catch(() => {})
       ));
     } catch {}
-    
+
     throw new Error(`Failed to download video: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -196,20 +223,25 @@ export async function cleanupTempFile(tempFilePath: string): Promise<void> {
  */
 export async function getVideoStreamUrl(url: string): Promise<string> {
   const ytDlp = new YTDlpWrap();
-  
+
   try {
-    const info = await ytDlp.getVideoInfo(url);
-    
+    // Get common args (including proxy if configured)
+    const commonArgs = getCommonYtDlpArgs();
+    const args = [...commonArgs, '--dump-json', '--no-playlist', url];
+
+    const output = await ytDlp.execPromise(args);
+    const info = JSON.parse(output);
+
     // Try to get a direct stream URL for preview
     if (info.url) {
       return info.url;
     }
-    
+
     // Fallback to thumbnail if no direct stream
     if (info.thumbnail) {
       return info.thumbnail;
     }
-    
+
     throw new Error('No preview URL available');
   } catch (error) {
     throw new Error(`Failed to get stream URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
