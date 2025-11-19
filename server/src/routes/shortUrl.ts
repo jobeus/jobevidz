@@ -5,39 +5,7 @@ import { logger } from '../utils/logger.js';
 
 const router = Router();
 
-// User agents that should receive server-rendered meta tags
-const CRAWLER_USER_AGENTS = [
-  'facebookexternalhit',
-  'Facebot',
-  'Twitterbot',
-  'LinkedInBot',
-  'Slackbot',
-  'Discordbot',
-  'WhatsApp',
-  'TelegramBot',
-  'SkypeUriPreview',
-  'iMessageBot',
-  'Pinterest',
-  'redditbot',
-  'Embedly',
-  'Tumblr',
-  'bitlybot',
-  'vkShare',
-  'W3C_Validator',
-  'developers.google.com/+/web/snippet',
-];
 
-/**
- * Check if the request is from a social media crawler
- */
-function isCrawler(userAgent: string | undefined): boolean {
-  if (!userAgent) return false;
-
-  const lowerUA = userAgent.toLowerCase();
-  return CRAWLER_USER_AGENTS.some(crawler =>
-    lowerUA.includes(crawler.toLowerCase())
-  );
-}
 
 /**
  * Generate HTML with Open Graph and Twitter Card meta tags for a video
@@ -85,15 +53,21 @@ function generateVideoMetaHTML(
     ${thumbnailUrl ? `<meta property="og:image" content="${thumbnailUrl}" />` : ''}
     ${thumbnailUrl ? `<meta property="og:image:secure_url" content="${thumbnailUrl}" />` : ''}
     ${thumbnailUrl ? `<meta property="og:image:type" content="image/jpeg" />` : ''}
-    ${thumbnailUrl ? `<meta property="og:image:width" content="1280" />` : ''}
-    ${thumbnailUrl ? `<meta property="og:image:height" content="720" />` : ''}
+    ${thumbnailUrl ? `<meta property="og:image:width" content="1200" />` : ''}
+    ${thumbnailUrl ? `<meta property="og:image:height" content="630" />` : ''}
+    ${thumbnailUrl ? `<meta property="og:image:alt" content="${title}" />` : ''}
 
-    <!-- Video Meta Tags -->
+    <!-- Video Meta Tags for Direct Playback (Discord, iMessage, etc.) -->
     <meta property="og:video" content="${videoUrl}" />
+    <meta property="og:video:url" content="${videoUrl}" />
     <meta property="og:video:secure_url" content="${videoUrl}" />
     <meta property="og:video:type" content="video/mp4" />
     <meta property="og:video:width" content="${video.width}" />
     <meta property="og:video:height" content="${video.height}" />
+
+    <!-- Additional video metadata -->
+    <meta property="video:duration" content="${Math.floor(video.duration)}" />
+    <meta property="video:release_date" content="${video.uploadedAt}" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="player" />
@@ -101,11 +75,18 @@ function generateVideoMetaHTML(
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
     ${thumbnailUrl ? `<meta name="twitter:image" content="${thumbnailUrl}" />` : ''}
+    ${thumbnailUrl ? `<meta name="twitter:image:alt" content="${title}" />` : ''}
     <meta name="twitter:player" content="${embedUrl}" />
     <meta name="twitter:player:width" content="${video.width}" />
     <meta name="twitter:player:height" content="${video.height}" />
     <meta name="twitter:player:stream" content="${videoUrl}" />
     <meta name="twitter:player:stream:content_type" content="video/mp4" />
+
+    <!-- Apple/iMessage specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="${siteName}" />
+    ${thumbnailUrl ? `<link rel="apple-touch-icon" href="${thumbnailUrl}" />` : ''}
 
     <!-- oEmbed Discovery -->
     <link rel="alternate" type="application/json+oembed"
@@ -118,6 +99,9 @@ function generateVideoMetaHTML(
     <!-- Additional Meta -->
     <meta name="author" content="${escapeHtml(video.username)}" />
     <meta name="duration" content="${Math.floor(video.duration)}" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="${shareUrl}" />
 
     <style>
       body {
@@ -158,7 +142,7 @@ function generateVideoMetaHTML(
 </html>`;
 }
 
-// Get video by short ID - returns JSON for API calls, HTML for crawlers
+// Get video by short ID - returns HTML with meta tags by default, JSON if requested
 router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { shortId } = req.params;
@@ -175,29 +159,34 @@ router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if request is from a crawler
-    const userAgent = req.get('user-agent');
-    if (isCrawler(userAgent)) {
-      logger.info({ shortId, userAgent }, 'Serving meta tags for crawler');
+    // Check if JSON is explicitly requested via Accept header or query parameter
+    const acceptHeader = req.get('accept') || '';
+    const wantsJson = req.query.format === 'json' || acceptHeader.includes('application/json');
 
-      // Build URLs
-      const protocol = req.protocol;
-      const host = req.get('host');
-      const baseUrl = `${protocol}://${host}`;
-      const videoUrl = `${baseUrl}/uploads/videos/${metadata.filename}`;
-      const thumbnailUrl = metadata.thumbnailFilename
-        ? `${baseUrl}/uploads/thumbnails/${metadata.thumbnailFilename}`
-        : null;
-
-      // Generate and send HTML with meta tags
-      const html = generateVideoMetaHTML(metadata, baseUrl, videoUrl, thumbnailUrl);
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.send(html);
+    if (wantsJson) {
+      // For API calls, return JSON
+      logger.info({ shortId }, 'Serving JSON response');
+      res.json({ video: metadata });
       return;
     }
 
-    // For API calls, return JSON
-    res.json({ video: metadata });
+    // Default: serve HTML with meta tags for everyone (crawlers, browsers, validators, etc.)
+    const userAgent = req.get('user-agent');
+    logger.info({ shortId, userAgent }, 'Serving HTML with meta tags');
+
+    // Build URLs
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+    const videoUrl = `${baseUrl}/uploads/videos/${metadata.filename}`;
+    const thumbnailUrl = metadata.thumbnailFilename
+      ? `${baseUrl}/uploads/thumbnails/${metadata.thumbnailFilename}`
+      : null;
+
+    // Generate and send HTML with meta tags
+    const html = generateVideoMetaHTML(metadata, baseUrl, videoUrl, thumbnailUrl);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   } catch (error) {
     logger.error({ err: error, shortId: req.params.shortId }, 'Error resolving short URL');
     res.status(500).json({ error: 'Failed to resolve short URL' });

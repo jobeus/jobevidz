@@ -87,7 +87,8 @@ export const videoApi = {
   },
 
   getVideoByShortId: async (shortId: string): Promise<{ video: VideoMetadata }> => {
-    const response = await api.get(`/v/${shortId}`);
+    // Request JSON format explicitly since /v/:shortId now returns HTML by default
+    const response = await api.get(`/v/${shortId}?format=json`);
     return response.data;
   },
 

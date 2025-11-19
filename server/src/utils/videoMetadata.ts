@@ -42,7 +42,8 @@ export async function extractVideoMetadata(filePath: string): Promise<ExtractedM
 }
 
 /**
- * Generate a thumbnail from a video file
+ * Generate a thumbnail from a video file optimized for Open Graph (1200x630)
+ * Preserves aspect ratio and adds padding if necessary
  * @param videoPath - Path to the video file
  * @param thumbnailFilename - Desired filename for the thumbnail (e.g., 'abc123.jpg')
  * @param timeInSeconds - Time position in the video to capture (default: 1 second)
@@ -54,13 +55,23 @@ export async function generateThumbnail(
   timeInSeconds: number = 1
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Open Graph recommended size: 1200x630 (1.905:1 aspect ratio)
+    // We'll scale the video to fit within these dimensions while preserving aspect ratio
+    // and add black padding (letterbox/pillarbox) if needed
+
     ffmpeg(videoPath)
       .screenshots({
         timestamps: [timeInSeconds],
         filename: thumbnailFilename,
         folder: THUMBNAILS_DIR,
-        size: '1280x720', // 720p thumbnail
+        size: '1200x630',
+        // Use 'contain' to preserve aspect ratio and add padding
+        // This ensures the thumbnail is exactly 1200x630 with black bars if needed
       })
+      .outputOptions([
+        '-vf',
+        'scale=1200:630:force_original_aspect_ratio=decrease,pad=1200:630:(ow-iw)/2:(oh-ih)/2:black'
+      ])
       .on('end', () => {
         resolve(thumbnailFilename);
       })

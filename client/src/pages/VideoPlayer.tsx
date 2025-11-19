@@ -137,15 +137,21 @@ const VideoPlayer: React.FC = () => {
         {thumbnailUrl && <meta property="og:image" content={thumbnailUrl} />}
         {thumbnailUrl && <meta property="og:image:secure_url" content={thumbnailUrl} />}
         {thumbnailUrl && <meta property="og:image:type" content="image/jpeg" />}
-        {thumbnailUrl && <meta property="og:image:width" content="1280" />}
-        {thumbnailUrl && <meta property="og:image:height" content="720" />}
+        {thumbnailUrl && <meta property="og:image:width" content="1200" />}
+        {thumbnailUrl && <meta property="og:image:height" content="630" />}
+        {thumbnailUrl && <meta property="og:image:alt" content={video.title} />}
 
-        {/* Video Meta Tags */}
+        {/* Video Meta Tags for Direct Playback (Discord, iMessage, etc.) */}
         <meta property="og:video" content={videoUrl} />
+        <meta property="og:video:url" content={videoUrl} />
         <meta property="og:video:secure_url" content={videoUrl} />
         <meta property="og:video:type" content="video/mp4" />
         <meta property="og:video:width" content={String(video.width)} />
         <meta property="og:video:height" content={String(video.height)} />
+
+        {/* Additional video metadata */}
+        <meta property="video:duration" content={String(Math.floor(video.duration))} />
+        <meta property="video:release_date" content={video.uploadedAt} />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="player" />
@@ -153,11 +159,18 @@ const VideoPlayer: React.FC = () => {
         <meta name="twitter:title" content={video.title} />
         <meta name="twitter:description" content={video.description || `Watch ${video.title} on JobeVidz`} />
         {thumbnailUrl && <meta name="twitter:image" content={thumbnailUrl} />}
+        {thumbnailUrl && <meta name="twitter:image:alt" content={video.title} />}
         <meta name="twitter:player" content={embedUrl} />
         <meta name="twitter:player:width" content={String(video.width)} />
         <meta name="twitter:player:height" content={String(video.height)} />
         <meta name="twitter:player:stream" content={videoUrl} />
         <meta name="twitter:player:stream:content_type" content="video/mp4" />
+
+        {/* Apple/iMessage specific meta tags */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="JobeVidz" />
+        {thumbnailUrl && <link rel="apple-touch-icon" href={thumbnailUrl} />}
 
         {/* oEmbed Discovery */}
         <link rel="alternate" type="application/json+oembed"
@@ -170,6 +183,9 @@ const VideoPlayer: React.FC = () => {
         {/* Additional Meta */}
         <meta name="author" content={video.username} />
         <meta name="duration" content={String(Math.floor(video.duration))} />
+
+        {/* Canonical URL */}
+        <link rel="canonical" href={shareUrl} />
       </Helmet>
 
       <div className={`video-player-container ${isTheatreMode ? 'theatre-mode' : ''}`}>
