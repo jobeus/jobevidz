@@ -13,14 +13,14 @@ const __dirname = path.dirname(__filename);
 const TEMP_DIR = path.join(__dirname, '../../../uploads/temp');
 const VIDEOS_DIR = path.join(__dirname, '../../../uploads/videos');
 
-// Get proxy configuration from environment variable
-const YTDLP_PROXY = process.env.YTDLP_PROXY;
-
 /**
  * Get common yt-dlp arguments including proxy if configured
  */
 function getCommonYtDlpArgs(): string[] {
   const args: string[] = [];
+
+  // Read proxy from environment variable at runtime (after dotenv.config() has run)
+  const YTDLP_PROXY = process.env.YTDLP_PROXY;
 
   if (YTDLP_PROXY) {
     args.push('--proxy', YTDLP_PROXY);
