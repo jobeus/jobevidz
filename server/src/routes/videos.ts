@@ -189,10 +189,14 @@ router.post(
         userId: req.user.userId,
       });
 
+      // Build absolute URL for video streaming
+      // Use API_BASE_URL from env if set, otherwise construct from request
+      const baseUrl = process.env.API_BASE_URL || `${req.protocol}://${req.get('host')}`;
+
       const response: UrlPreviewResponse = {
         metadata: downloadResult.metadata,
         previewId,
-        streamUrl: `/api/videos/temp/${previewId}`,
+        streamUrl: `${baseUrl}/api/videos/temp/${previewId}`,
       };
 
       res.json(response);
