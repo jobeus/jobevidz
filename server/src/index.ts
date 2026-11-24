@@ -29,6 +29,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Optional bind address (unset = all interfaces). Production sets HOST=127.0.0.1 behind nginx.
+const HOST = process.env.HOST;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Security middleware
@@ -179,7 +181,7 @@ async function startServer() {
     await initializeTempDirectory();
     logger.info('Directories initialized');
 
-    const server = app.listen(PORT, () => {
+    const server = app.listen(Number(PORT), HOST as string, () => {
       logger.info({
         port: PORT,
         environment: process.env.NODE_ENV || 'development',
