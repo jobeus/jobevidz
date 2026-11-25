@@ -174,6 +174,38 @@ Client runs on http://localhost:5173
 
 ## 🚀 Production Deployment
 
+### Live (grizzly, auto-deploy on push)
+
+vidz.jobe.wtf / vidzapi.jobe.wtf run on grizzly from `~jobe/webs/vidz.jobe.wtf` under `jobevidz.service`
+(which runs [`start.sh`](start.sh)); Apache serves `client/dist` and proxies the API to `127.0.0.1:3020`.
+Server config lives in the jobepanel repo (`servers/grizzly/`).
+
+Every push to `main` runs CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), which builds both halves and
+then POSTs a signed hook to `https://vidzapi.jobe.wtf/__deploy` (same protocol as pasters/basegame/cmwgpt):
+
+```
+POST /deploy
+X-Deploy-Timestamp: <unix seconds>
+X-Deploy-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<body>">
+{"sha": "<commit>", "ref": "refs/heads/main"}
+```
+
+[`server/src/utils/deployHook.ts`](server/src/utils/deployHook.ts) rejects bad signatures or timestamps more than
+5 minutes off (401), answers `up-to-date` if already on that sha, otherwise answers 202 and in the background runs
+`git pull --ff-only` and [`scripts/release-build.sh`](scripts/release-build.sh), then exits with code 42 so `start.sh`
+relaunches it. A failed pull or build is logged (`journalctl -u jobevidz`) and the old build keeps running.
+
+| var (server/.env) | default | |
+|---|---|---|
+| `DEPLOY_WEBHOOK_SECRET` | unset | shared HMAC secret (also the Actions secret); the listener is off when empty |
+| `DEPLOY_WEBHOOK_HOST` | `127.0.0.1` | listener interface |
+| `DEPLOY_WEBHOOK_PORT` | `8790` | listener port |
+| `DEPLOY_BUILD_COMMAND` | `./scripts/release-build.sh` | run after the pull, in the checkout |
+
+Manual deploy, as jobe in the checkout: `git pull && ./scripts/release-build.sh && sudo systemctl restart jobevidz`.
+
+The sections below describe the older generic pm2/nginx setup.
+
 ### Build the Application
 
 **Build server:**
