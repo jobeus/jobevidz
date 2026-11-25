@@ -19,3 +19,5 @@ data/*
 .DS_Store
 Thumbs.db
 
+client/dist-next
+client/dist-prev

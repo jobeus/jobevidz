@@ -138,7 +138,7 @@ function generateMetaTags(
 }
 
 // Get video by short ID - returns HTML with meta tags by default, JSON if requested
-router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
+router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response): Promise<void> => {
   try {
     const { shortId } = req.params;
 

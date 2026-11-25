@@ -17,6 +17,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
 import { logger } from './utils/logger.js';
+import { startDeployHook, DEPLOY_EXIT_CODE } from './utils/deployHook.js';
 
 const execAsync = promisify(exec);
 
@@ -190,25 +191,29 @@ async function startServer() {
       }, 'Server started successfully');
     });
 
-    // Graceful shutdown
-    const gracefulShutdown = (signal: string) => {
+    // Graceful shutdown. A deploy exits with DEPLOY_EXIT_CODE so start.sh relaunches the new build.
+    let deployHook: ReturnType<typeof startDeployHook> = null;
+    const gracefulShutdown = (signal: string, exitCode = 0) => {
       logger.info({ signal }, 'Graceful shutdown initiated');
+      deployHook?.close();
 
       server.close(() => {
         logger.info('HTTP server closed');
         logger.info('Process terminated gracefully');
-        process.exit(0);
+        process.exit(exitCode);
       });
 
       // Force shutdown after 10 seconds
       setTimeout(() => {
         logger.error('Forced shutdown after timeout');
-        process.exit(1);
+        process.exit(exitCode || 1);
       }, 10000);
     };
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    deployHook = startDeployHook(() => gracefulShutdown('deploy', DEPLOY_EXIT_CODE));
 
   } catch (error) {
     logger.fatal({ err: error }, 'Failed to start server');

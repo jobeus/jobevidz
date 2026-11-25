@@ -1,0 +1,64 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 26
+        cache: npm
+        cache-dependency-path: |
+          server/package-lock.json
+          client/package-lock.json
+
+    - name: Build server
+      working-directory: server
+      run: |
+        npm ci --no-audit --no-fund
+        npm run build
+
+    - name: Build client
+      working-directory: client
+      run: |
+        npm ci --no-audit --no-fund --legacy-peer-deps
+        npm run build
+
+  deploy:
+    # Tell the server about the new commit once the build passes on main. Does nothing until the
+    # DEPLOY_WEBHOOK_URL / DEPLOY_WEBHOOK_SECRET repository secrets are set.
+    needs: build
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy
+      cancel-in-progress: true
+    steps:
+    - name: Notify server
+      env:
+        DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+      run: |
+        if [ -z "$DEPLOY_WEBHOOK_URL" ] || [ -z "$DEPLOY_WEBHOOK_SECRET" ]; then
+          echo "DEPLOY_WEBHOOK_URL / DEPLOY_WEBHOOK_SECRET not set; skipping deploy notification"
+          exit 0
+        fi
+        body=$(printf '{"sha":"%s","ref":"%s"}' "$GITHUB_SHA" "$GITHUB_REF")
+        ts=$(date +%s)
+        sig=$(printf '%s.%s' "$ts" "$body" | openssl dgst -sha256 -hmac "$DEPLOY_WEBHOOK_SECRET" -r | cut -d' ' -f1)
+        # Retries cover the server being mid-restart from a previous push.
+        curl -fsS --retry 6 --retry-delay 15 --retry-all-errors --max-time 20 \
+          -X POST "$DEPLOY_WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          -H "X-Deploy-Timestamp: $ts" \
+          -H "X-Deploy-Signature: sha256=$sig" \
+          --data "$body"

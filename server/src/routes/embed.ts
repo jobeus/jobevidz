@@ -143,7 +143,7 @@ function generateEmbedHTML(
  * Embed video player endpoint
  * Serves a minimal HTML page with just the video player for iframe embedding
  */
-router.get('/:shortId', async (req: Request, res: Response): Promise<void> => {
+router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response): Promise<void> => {
   try {
     const { shortId } = req.params;
     

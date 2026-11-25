@@ -15,7 +15,7 @@ export interface UserPublic {
   createdAt: string;
 }
 
-export interface AuthRequest extends Request {
+export interface AuthRequest<P = Record<string, string>> extends Request<P> {
   user?: {
     userId: string;
     username: string;
