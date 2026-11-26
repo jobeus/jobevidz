@@ -12,6 +12,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import { Transform } from 'stream';
 import { pipeline } from 'stream/promises';
@@ -81,7 +82,7 @@ async function readText(req: AuthRequest): Promise<string> {
   let text = '';
   for await (const chunk of req) {
     text += chunk;
-    if (text.length > 10_000) break;
+    if (text.length > 65_536) break;
   }
   return text;
 }
@@ -97,16 +98,14 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
 
   try {
     // A link
-    if (type === 'application/json' || type === 'application/x-www-form-urlencoded' || type === 'text/plain') {
-      const body = type === 'text/plain' ? { url: await readText(req) } : req.body || {};
-      const raw = String(body.url || '').trim();
-      const url = raw.match(/https?:\/\/\S+/)?.[0];
+    const shareLink = async (text: string, title: string) => {
+      const url = text.match(/https?:\/\/[^\s"'<>]+/)?.[0];
       if (!url) {
         fail(res, 400, 'Send a link starting with https://');
         return;
       }
       const video = await createProcessingVideo(user, {
-        title: String(body.title || '').trim(),
+        title: title.trim(),
         description: '',
         originalFilename: url,
         filename: `${nanoid()}.mp4`,
@@ -114,6 +113,21 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
       });
       logger.info({ userId: user.userId, viaApiKey: !!req.viaApiKey, shortId: video.shortId }, 'Share: link');
       reply(video.shortId);
+    };
+
+    // A link: JSON {"url": ...} or plain text containing one
+    if (type === 'application/json' || type === 'text/plain') {
+      const text = await readText(req);
+      let body: { url?: unknown; title?: unknown } = { url: text };
+      if (type === 'application/json') {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          fail(res, 400, 'That JSON could not be read. Send {"url": "https://..."}');
+          return;
+        }
+      }
+      await shareLink(String(body.url || ''), String(body.title || ''));
       return;
     }
 
@@ -145,7 +159,16 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
     }
 
     if (!size || !(await hasVideoStream(getVideoPath(stored)))) {
+      // Not a video. A small form post (url=...) is a link sent the other way.
+      const form =
+        type === 'application/x-www-form-urlencoded' && size < 10_000
+          ? new URLSearchParams(await fs.readFile(getVideoPath(stored), 'utf-8'))
+          : null;
       await deleteVideoFile(stored);
+      if (form?.get('url')) {
+        await shareLink(form.get('url') || '', form.get('title') || '');
+        return;
+      }
       fail(res, 400, "That doesn't look like a video. Share a video or a link to one.");
       return;
     }

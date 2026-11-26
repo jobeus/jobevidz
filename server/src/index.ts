@@ -85,6 +85,10 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Body parsing middleware with size limits
+// /api/share reads its own body (a raw video can arrive with any Content-Type, including the
+// form type curl uses by default), so it goes before the global body parsers.
+app.use('/api/share', shareRoutes);
+
 app.use(express.json({ limit: '10mb' })); // Limit JSON payloads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -114,7 +118,6 @@ app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../../upload
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
-app.use('/api/share', shareRoutes);
 app.use('/v', shortUrlRoutes);
 app.use('/oembed', oembedRoutes);
 app.use('/embed', embedRoutes);
