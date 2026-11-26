@@ -15,7 +15,7 @@ import {
   deleteVideoMetadata,
   deleteThumbnailFile,
 } from '../utils/fileStorage.js';
-import { extractVideoMetadata, generateThumbnail } from '../utils/videoMetadata.js';
+import { extractVideoMetadata, generateThumbnail, convertToMp4 } from '../utils/videoMetadata.js';
 import {
   generateUniqueShortId,
   mapShortIdToVideoId,
@@ -49,16 +49,10 @@ const upload = multer({
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE || '1073741824'), // 1GB default
   },
+  // Any video type the browser reports (some report .mkv/.flv as octet-stream). The upload
+  // route then checks with ffprobe that there is a real video stream and converts to mp4.
   fileFilter: (_req, file, cb) => {
-    const allowedMimes = [
-      'video/mp4',
-      'video/quicktime',
-      'video/x-matroska',
-      'video/x-msvideo',
-      'video/webm',
-    ];
-    
-    if (allowedMimes.includes(file.mimetype)) {
+    if (file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream') {
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Only video files are allowed.'));
@@ -87,8 +81,23 @@ router.post(
       const videoId = nanoid();
       const shortId = await generateUniqueShortId();
 
+      // Make it a browser-playable mp4, copying streams where possible (any format accepted).
+      const uploadedPath = req.file.path;
+      const filename = `${path.parse(req.file.filename).name}.mp4`;
+      const filePath = getVideoPath(filename);
+      try {
+        const conversion = await convertToMp4(uploadedPath, filePath);
+        logger.info({ videoId, original: path.extname(req.file.originalname), ...conversion }, 'Upload converted to mp4');
+      } catch (error) {
+        await deleteVideoFile(req.file.filename);
+        logger.warn({ err: error, userId: req.user.userId }, 'Upload is not a usable video');
+        res.status(400).json({ error: 'That file is not a video we can read.' });
+        return;
+      }
+      if (uploadedPath !== filePath) await deleteVideoFile(req.file.filename);
+      const fileSize = (await fs.stat(filePath)).size;
+
       // Extract video metadata
-      const filePath = req.file.path;
       const extractedMetadata = await extractVideoMetadata(filePath);
 
       // Generate thumbnail
@@ -109,11 +118,11 @@ router.post(
         shortId,
         userId: req.user.userId,
         username: req.user.username,
-        filename: req.file.filename,
+        filename,
         originalFilename: req.file.originalname,
         title: title || req.file.originalname,
         description: description || '',
-        fileSize: req.file.size,
+        fileSize,
         duration: extractedMetadata.duration,
         width: extractedMetadata.width,
         height: extractedMetadata.height,
@@ -128,7 +137,7 @@ router.post(
       await writeVideoMetadata(videoId, metadata);
       await mapShortIdToVideoId(shortId, videoId);
 
-      logVideoUpload(videoId, req.user.userId, req.file.size);
+      logVideoUpload(videoId, req.user.userId, fileSize);
       res.status(201).json({
         message: 'Video uploaded successfully',
         video: metadata,

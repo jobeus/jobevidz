@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs/promises';
 import { getThumbnailPath } from './fileStorage.js';
 
 const execFileAsync = promisify(execFile);
@@ -69,4 +70,78 @@ export async function generateThumbnail(
     throw new Error(`Failed to generate thumbnail: ${(err.stderr || err.message).trim()}`);
   });
   return thumbnailFilename;
+}
+
+// Codecs that go into an MP4 as-is and play in current browsers. Anything else is re-encoded.
+const MP4_VIDEO_CODECS = new Set(['h264', 'hevc', 'av1', 'vp9']);
+const MP4_AUDIO_CODECS = new Set(['aac', 'mp3', 'opus']);
+// 8-bit 4:2:0; other pixel formats (10-bit, 4:2:2, 4:4:4) won't play in most browsers as H.264.
+const PLAYABLE_PIX_FMTS = new Set(['yuv420p', 'yuvj420p']);
+
+interface ProbeStream {
+  index: number;
+  codec_type: string;
+  codec_name?: string;
+  pix_fmt?: string;
+  disposition?: { attached_pic?: number };
+}
+
+export interface Mp4Result {
+  /** what happened to each stream: 'copy' keeps the source bits, otherwise the encoder used */
+  video: 'copy' | 'libx264';
+  audio: 'copy' | 'aac' | 'none';
+}
+
+/**
+ * Writes `inputPath` as a browser-playable MP4 at `outputPath`, changing as little as possible:
+ * streams whose codec MP4 can hold are copied untouched (H.264/HEVC/AV1/VP9 video, AAC/MP3/Opus
+ * audio); only the others are re-encoded, video as near-lossless H.264 (CRF 18) and audio as
+ * 256k AAC. Keeps the first real video stream and the first audio stream, drops subtitles and
+ * data, and moves the index to the front so playback starts before the whole file loads.
+ * Throws if there is no video stream. `outputPath` may equal `inputPath`.
+ */
+export async function convertToMp4(inputPath: string, outputPath: string): Promise<Mp4Result> {
+  const { stdout } = await execFileAsync(
+    'ffprobe',
+    ['-v', 'error', '-show_streams', '-of', 'json', inputPath],
+    { maxBuffer: 16 * 1024 * 1024 },
+  ).catch((err: Error & { stderr?: string }) => {
+    throw new Error(`Not a readable video file: ${(err.stderr || err.message).trim()}`);
+  });
+  const streams: ProbeStream[] = JSON.parse(stdout).streams || [];
+  const video = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
+  const audio = streams.find((s) => s.codec_type === 'audio');
+  if (!video) throw new Error('No video stream found in file');
+
+  const copyVideo =
+    MP4_VIDEO_CODECS.has(video.codec_name || '') &&
+    (video.codec_name !== 'h264' || PLAYABLE_PIX_FMTS.has(video.pix_fmt || ''));
+  const copyAudio = !!audio && MP4_AUDIO_CODECS.has(audio.codec_name || '');
+  const result: Mp4Result = {
+    video: copyVideo ? 'copy' : 'libx264',
+    audio: !audio ? 'none' : copyAudio ? 'copy' : 'aac',
+  };
+
+  const args = ['-hide_banner', '-loglevel', 'error', '-y', '-i', inputPath, '-map', `0:${video.index}`];
+  if (audio) args.push('-map', `0:${audio.index}`);
+  if (copyVideo) {
+    args.push('-c:v', 'copy');
+    if (video.codec_name === 'hevc') args.push('-tag:v', 'hvc1'); // Safari needs the hvc1 tag
+  } else {
+    args.push('-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p');
+  }
+  if (audio) args.push(...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '256k']));
+  // write beside the target first, so a failure never leaves a half-written file in its place
+  const partial = `${outputPath}.partial.mp4`;
+  args.push('-movflags', '+faststart', '-f', 'mp4', partial);
+
+  try {
+    await execFileAsync('ffmpeg', args, { maxBuffer: 16 * 1024 * 1024 });
+    await fs.rename(partial, outputPath);
+  } catch (err) {
+    await fs.unlink(partial).catch(() => {});
+    const e = err as Error & { stderr?: string };
+    throw new Error(`Failed to convert video to mp4: ${(e.stderr || e.message).trim().slice(-500)}`);
+  }
+  return result;
 }

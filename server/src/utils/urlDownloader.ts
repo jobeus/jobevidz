@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 import { nanoid } from 'nanoid';
 import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
+import { convertToMp4 } from './videoMetadata.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -133,11 +134,13 @@ export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo
     // Download options
     const downloadOptions = [
       ...commonArgs,
-      // Best H.264 video (plays everywhere) + AAC audio, up to 1080p, merged into one mp4 by
-      // ffmpeg. Many sites (YouTube included) no longer offer a single combined file, which
-      // the old 'best[ext=mp4]/best' required ("Requested format is not available").
-      '--format', 'bv*[vcodec^=avc1][height<=1080]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/b',
-      '--merge-output-format', 'mp4',
+      // Never fail on format choice: take the best video + best audio, else the best single
+      // file, else video alone. -S only ranks formats (prefer H.264/AAC, which play
+      // everywhere and copy straight into mp4); it never rules one out. Merge into mkv, which
+      // holds any codec; convertToMp4 below makes the final mp4.
+      '--format', 'bv*+ba/b/bv*',
+      '-S', 'vcodec:h264,acodec:aac',
+      '--merge-output-format', 'mkv',
       '--output', tempFilePath,
       '--no-playlist', // Only download single video
       '--max-filesize', '1G', // Respect 1GB limit
@@ -155,12 +158,18 @@ export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo
       throw new Error('Downloaded file not found');
     }
 
-    const actualTempFilePath = path.join(TEMP_DIR, downloadedFile);
+    // Whatever came down, make it a browser-playable mp4 (stream copy where possible).
+    const downloadedPath = path.join(TEMP_DIR, downloadedFile);
+    const mp4Filename = `${tempId}.mp4`;
+    const mp4Path = path.join(TEMP_DIR, mp4Filename);
+    const conversion = await convertToMp4(downloadedPath, mp4Path);
+    if (downloadedPath !== mp4Path) await fs.unlink(downloadedPath).catch(() => {});
+    logger.info({ url, downloaded: path.extname(downloadedFile), ...conversion }, 'URL video converted to mp4');
 
     return {
-      tempFilePath: actualTempFilePath,
-      filename: downloadedFile,
-      metadata,
+      tempFilePath: mp4Path,
+      filename: mp4Filename,
+      metadata: { ...metadata, format: 'mp4' },
     };
   } catch (error) {
     // Clean up any partial downloads
