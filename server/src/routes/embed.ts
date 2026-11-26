@@ -122,7 +122,7 @@ function generateEmbedHTML(
           controls 
           autoplay 
           preload="metadata"
-          controlsList="nodownload"
+          controlsList="nodownload"${video.thumbnailFilename ? ` poster="${baseUrl}/uploads/thumbnails/${encodeURIComponent(video.thumbnailFilename)}"` : ''}
         >
           <source src="${videoUrl}" type="video/mp4" />
           Your browser does not support the video tag.

@@ -204,6 +204,8 @@ relaunches it. A failed pull or build is logged (`journalctl -u jobevidz`) and t
 
 Manual deploy, as jobe in the checkout: `git pull && ./scripts/release-build.sh && sudo systemctl restart jobevidz`.
 
+Thumbnails (1200×630 JPEG, padded to keep the aspect ratio) are made on upload. To create any that are missing, run `node server/dist/backfillThumbnails.js` (add `--dry-run` to preview) as jobe in the checkout; it is safe to re-run.
+
 The sections below describe the older generic pm2/nginx setup.
 
 ### Build the Application

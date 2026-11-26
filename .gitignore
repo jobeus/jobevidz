@@ -12,6 +12,7 @@ uploads/temp/*
 !uploads/temp/.gitkeep
 uploads/metadata/*
 !uploads/metadata/.gitkeep
+uploads/thumbnails/*
 data/*
 !data/.gitkeep
 

@@ -191,7 +191,7 @@ const VideoPlayer: React.FC = () => {
       <div className={`video-player-container ${isTheatreMode ? 'theatre-mode' : ''}`}>
         <div className="video-player-card">
           <div className="video-wrapper">
-            <video controls className="video-element">
+            <video controls className="video-element" poster={thumbnailUrl ?? undefined}>
               <source src={videoUrl} type={getMimeType(video.filename)} />
               Your browser does not support the video tag.
             </video>

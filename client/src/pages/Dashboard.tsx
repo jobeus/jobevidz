@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { videoApi, getVideoUrl, errorMessage } from '../services/api';
+import { videoApi, getVideoUrl, getThumbnailUrl, errorMessage } from '../services/api';
 import type { VideoMetadata } from '../types/index';
 import './Dashboard.css';
 
@@ -113,11 +113,20 @@ const Dashboard: React.FC = () => {
           {videos.map((video) => (
             <div key={video.id} className="video-card">
               <Link to={`/v/${video.shortId}`} className="video-thumbnail">
-                <video
-                  src={getVideoUrl(video.filename)}
-                  className="thumbnail-video"
-                  preload="metadata"
-                />
+                {video.thumbnailFilename ? (
+                  <img
+                    src={getThumbnailUrl(video.thumbnailFilename)}
+                    alt={video.title}
+                    className="thumbnail-video"
+                    loading="lazy"
+                  />
+                ) : (
+                  <video
+                    src={getVideoUrl(video.filename)}
+                    className="thumbnail-video"
+                    preload="metadata"
+                  />
+                )}
                 <div className="video-duration">{formatDuration(video.duration)}</div>
               </Link>
 

@@ -99,7 +99,7 @@ router.post(
         const thumbnailTime = Math.min(1, extractedMetadata.duration * 0.1);
         thumbnailFilename = await generateThumbnail(filePath, thumbnailName, thumbnailTime);
       } catch (error) {
-        logger.warn({ err: error, videoId }, 'Failed to generate thumbnail');
+        logger.error({ err: error, videoId }, 'Failed to generate thumbnail');
         // Continue without thumbnail
       }
 
@@ -316,7 +316,7 @@ router.post(
         const thumbnailTime = Math.min(1, duration * 0.1);
         thumbnailFilename = await generateThumbnail(finalPath, thumbnailName, thumbnailTime);
       } catch (error) {
-        logger.warn({ err: error, videoId }, 'Failed to generate thumbnail');
+        logger.error({ err: error, videoId }, 'Failed to generate thumbnail');
         // Continue without thumbnail
       }
 
