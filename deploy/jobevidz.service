@@ -1,0 +1,31 @@
+# systemd unit for jobevidz on grizzly (vidz.jobe.wtf). Install, as jobe in the checkout:
+#   sudo install -m 644 deploy/jobevidz.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now jobevidz
+# Logs: journalctl -u jobevidz -f
+# Apache (vidzapi.jobe.wtf, vidz.jobe.wtf) proxies to 127.0.0.1:3020; deploy hook on 127.0.0.1:8790.
+
+[Unit]
+Description=jobevidz API (vidz.jobe.wtf)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=jobe
+Group=jobe
+WorkingDirectory=/home/jobe/webs/vidz.jobe.wtf
+# start.sh loads .env, builds, and relaunches on exit 42 (deploy webhook);
+# systemd covers crashes and reboots.
+ExecStart=/home/jobe/webs/vidz.jobe.wtf/start.sh
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+SyslogIdentifier=jobevidz
+NoNewPrivileges=true
+PrivateTmp=true
+# Node:
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

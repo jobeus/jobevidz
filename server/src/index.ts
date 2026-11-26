@@ -26,9 +26,9 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from server directory
-// __dirname is server/dist, so we go up one level to server/
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load .env from the checkout root (__dirname is server/dist). On grizzly start.sh has
+// already exported it; values already in the environment win.
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const app = express();
 // Trust X-Forwarded-* only from a proxy on this machine (Apache in production). Without it,
@@ -36,8 +36,8 @@ const app = express();
 // Apache's 127.0.0.1, so the rate limiter treated every visitor as one client.
 app.set('trust proxy', 'loopback');
 const PORT = process.env.PORT || 3000;
-// Optional bind address (unset = all interfaces). Production sets HOST=127.0.0.1 behind nginx.
-const HOST = process.env.HOST;
+// Bind address: loopback unless HOST says otherwise (Apache proxies to it on grizzly).
+const HOST = process.env.HOST || '127.0.0.1';
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Security middleware

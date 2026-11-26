@@ -22,3 +22,4 @@ Thumbs.db
 
 client/dist-next
 client/dist-prev
+.release-built

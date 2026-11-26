@@ -112,7 +112,7 @@ cd jobevidz
 ```bash
 cd server
 npm install
-cp .env.example .env
+cp ../.env.example ../.env   # the server reads .env from the checkout root
 ```
 
 3. **Install client dependencies:**
@@ -176,12 +176,17 @@ Client runs on http://localhost:5173
 
 ### Live (grizzly, auto-deploy on push)
 
-vidz.jobe.wtf / vidzapi.jobe.wtf run on grizzly from `~jobe/webs/vidz.jobe.wtf` under `jobevidz.service`
-(which runs [`start.sh`](start.sh)); Apache serves `client/dist` and proxies the API to `127.0.0.1:3020`.
-Server config lives in the jobepanel repo (`servers/grizzly/`).
+Deployed the standard grizzly way (the `grizzly-service` skill; same as pasters, musiclinks,
+basegame). vidz.jobe.wtf / vidzapi.jobe.wtf run from `~jobe/webs/vidz.jobe.wtf` under
+[`deploy/jobevidz.service`](deploy/jobevidz.service), which runs [`start.sh`](start.sh): it
+loads `.env` (checkout root, 600), runs [`scripts/release-build.sh`](scripts/release-build.sh)
+(a no-op when this commit is already built) and relaunches the API whenever it exits with
+code 42. The API listens on `127.0.0.1:3020`; Apache serves `client/dist` and proxies the
+API. The vhosts live in jobepanel (`servers/grizzly/apache/sites-available/jobe.wtf.conf`).
+Videos and state are in `uploads/` and `data/`.
 
-Every push to `main` runs CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), which builds both halves and
-then POSTs a signed hook to `https://vidzapi.jobe.wtf/__deploy` (same protocol as pasters/basegame/cmwgpt):
+Every push to `main` runs CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), which
+builds both halves and then POSTs a signed hook to `https://vidzapi.jobe.wtf/__deploy`:
 
 ```
 POST /deploy
@@ -190,172 +195,24 @@ X-Deploy-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<body>">
 {"sha": "<commit>", "ref": "refs/heads/main"}
 ```
 
-[`server/src/utils/deployHook.ts`](server/src/utils/deployHook.ts) rejects bad signatures or timestamps more than
-5 minutes off (401), answers `up-to-date` if already on that sha, otherwise answers 202 and in the background runs
-`git pull --ff-only` and [`scripts/release-build.sh`](scripts/release-build.sh), then exits with code 42 so `start.sh`
-relaunches it. A failed pull or build is logged (`journalctl -u jobevidz`) and the old build keeps running.
+[`server/src/utils/deployHook.ts`](server/src/utils/deployHook.ts) rejects bad signatures or
+timestamps more than 5 minutes off (401), answers `up-to-date` if already on that sha,
+otherwise answers 202 and in the background runs `git pull --ff-only` and
+`scripts/release-build.sh` (the client is built into `client/dist-next` and swapped in), then
+exits with code 42 so `start.sh` relaunches it. A failed pull or build is logged and the old
+build keeps running.
 
-| var (server/.env) | default | |
+| var (`.env`) | default | |
 |---|---|---|
 | `DEPLOY_WEBHOOK_SECRET` | unset | shared HMAC secret (also the Actions secret); the listener is off when empty |
 | `DEPLOY_WEBHOOK_HOST` | `127.0.0.1` | listener interface |
 | `DEPLOY_WEBHOOK_PORT` | `8790` | listener port |
 | `DEPLOY_BUILD_COMMAND` | `./scripts/release-build.sh` | run after the pull, in the checkout |
 
-Manual deploy, as jobe in the checkout: `git pull && ./scripts/release-build.sh && sudo systemctl restart jobevidz`.
+Manual deploy, as jobe in the checkout: `git pull && sudo systemctl restart jobevidz`.
+Logs: `journalctl -u jobevidz -f`.
 
 Thumbnails (1200×630 JPEG, padded to keep the aspect ratio) are made on upload. To create any that are missing, run `node server/dist/backfillThumbnails.js` (add `--dry-run` to preview) as jobe in the checkout; it is safe to re-run.
-
-The sections below describe the older generic pm2/nginx setup.
-
-### Build the Application
-
-**Build server:**
-```bash
-cd server
-npm run build
-```
-
-**Build client:**
-```bash
-cd client
-npm run build
-```
-
-### Deploy with PM2
-
-**Install PM2 globally:**
-```bash
-npm install -g pm2
-```
-
-**Start the application:**
-```bash
-# From project root
-pm2 start ecosystem.config.js --env production
-```
-
-**Useful PM2 commands:**
-```bash
-# View logs
-pm2 logs jobevidz-api
-
-# Monitor
-pm2 monit
-
-# Restart
-pm2 restart jobevidz-api
-
-# Stop
-pm2 stop jobevidz-api
-
-# View status
-pm2 status
-
-# Save PM2 configuration
-pm2 save
-
-# Setup PM2 to start on system boot
-pm2 startup
-```
-
-### Production Environment Variables
-
-**Server (.env):**
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=production
-
-# Authentication
-JWT_SECRET=<generate-a-strong-random-secret>
-JWT_EXPIRES_IN=7d
-
-# File Upload
-MAX_FILE_SIZE=1073741824
-
-# Directories
-UPLOAD_DIR=../uploads
-DATA_DIR=../data
-
-# Logging
-LOG_LEVEL=info
-```
-
-**Production Domains:**
-- Frontend: `https://vidz.jobe.wtf`
-- API: `https://vidzapi.jobe.wtf`
-
-These domains are hardcoded in the CORS configuration for security.
-
-### Health Check
-
-The application includes a comprehensive health check endpoint:
-
-```bash
-curl https://vidzapi.jobe.wtf/health
-```
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-10-03T12:00:00.000Z",
-  "uptime": 3600,
-  "environment": "production",
-  "ffmpeg": "available",
-  "ytdlp": "available",
-  "uploadsSize": "1.2G",
-  "writePermissions": "ok"
-}
-```
-
-### Nginx Configuration
-
-Example Nginx configuration for reverse proxy:
-
-```nginx
-# API Server
-server {
-    listen 80;
-    server_name vidzapi.jobe.wtf;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Increase timeouts for large uploads
-        proxy_read_timeout 300;
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-    }
-
-    # Increase max body size for video uploads
-    client_max_body_size 1G;
-}
-
-# Frontend
-server {
-    listen 80;
-    server_name vidz.jobe.wtf;
-
-    root /var/www/jobevidz/client/dist;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
----
 
 ## 📡 Documentation
 
@@ -486,8 +343,8 @@ Use the `/health` endpoint for:
 - **Video Player**: HTML5 Video with custom controls
 
 ### Infrastructure
-- **Process Manager**: PM2 (cluster mode, auto-restart)
-- **Reverse Proxy**: Nginx (SSL termination, static files)
+- **Process Manager**: systemd (`deploy/jobevidz.service` → `start.sh`, relaunch on exit 42)
+- **Reverse Proxy**: Apache on grizzly (TLS, static client, `/__deploy`)
 - **Storage**: File-based (videos, metadata, user data)
 
 ---
@@ -532,13 +389,10 @@ jobevidz/
 ├── data/                  # Application data
 │   ├── users.json        # User accounts
 │   └── shortids.json     # Short URL mappings
-├── scripts/               # Utility scripts
-│   ├── backup.sh         # Backup script
-│   ├── disk-monitor.sh   # Disk usage monitoring
-│   ├── health-check.sh   # Health check script
-│   └── update.sh         # Update script
-├── ecosystem.config.js    # PM2 configuration
-├── nginx.conf            # Nginx configuration
+├── scripts/
+│   └── release-build.sh  # Install + build both halves (start.sh and the deploy hook run it)
+├── deploy/jobevidz.service  # systemd unit on grizzly
+├── start.sh              # Loads .env, builds, runs the API, relaunches on exit 42
 ├── README.md             # This file
 └── API.md                # API documentation
 ```
@@ -614,17 +468,10 @@ kill -9 <PID>
 chmod -R 755 uploads/
 ```
 
-**PM2 not starting:**
+**Service not starting (grizzly):**
 ```bash
-# Check PM2 logs
-pm2 logs jobevidz-api
-
-# Restart PM2
-pm2 restart jobevidz-api
-
-# Delete and restart
-pm2 delete jobevidz-api
-pm2 start ecosystem.config.js --env production
+journalctl -u jobevidz -n 100
+sudo systemctl restart jobevidz
 ```
 
 ---

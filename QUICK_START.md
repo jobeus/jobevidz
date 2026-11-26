@@ -2,18 +2,7 @@
 
 ## 🚀 Deploy Changes
 
-```bash
-# Build server
-cd server && npm run build
-
-# Build client  
-cd ../client && npm run build
-
-# Restart server (choose one)
-pm2 restart jobevidz-server
-# or
-pm2 restart ecosystem.config.js
-```
+Push to `main`; CI deploys to grizzly (see README, "Live (grizzly, auto-deploy on push)").
 
 ## ✅ Quick Test
 
