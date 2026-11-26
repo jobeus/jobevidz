@@ -145,3 +145,18 @@ export async function convertToMp4(inputPath: string, outputPath: string): Promi
   }
   return result;
 }
+
+/** True if ffprobe finds a real video stream (not just cover art) in the file. Fast: reads headers only. */
+export async function hasVideoStream(filePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(
+      'ffprobe',
+      ['-v', 'error', '-show_streams', '-of', 'json', filePath],
+      { maxBuffer: 16 * 1024 * 1024 },
+    );
+    const streams: ProbeStream[] = JSON.parse(stdout).streams || [];
+    return streams.some((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
+  } catch {
+    return false;
+  }
+}

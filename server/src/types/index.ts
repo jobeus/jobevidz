@@ -38,9 +38,19 @@ export interface VideoMetadata {
   format: string;
   codec: string;
   thumbnailFilename?: string;
+  /** absent on videos from before background processing: treat as 'ready' */
+  status?: VideoStatus;
+  /** why processing failed (user-facing, credentials redacted) */
+  error?: string;
+  /** link the video was imported from */
+  sourceUrl?: string;
+  /** uploaded file waiting to be converted (deleted once processed) */
+  sourceFile?: string;
   uploadedAt: string;
   updatedAt: string;
 }
+
+export type VideoStatus = 'processing' | 'ready' | 'failed';
 
 export interface VideoMetadataUpdate {
   title?: string;
@@ -76,15 +86,9 @@ export interface UrlVideoMetadata {
   uploadDate?: string;
 }
 
-export interface UrlPreviewResponse {
-  metadata: UrlVideoMetadata;
-  previewId: string;
-  streamUrl?: string;
-}
-
 export interface UrlUploadRequest {
-  previewId: string;
-  title: string;
-  description: string;
+  url: string;
+  title?: string;
+  description?: string;
 }
 

@@ -111,7 +111,10 @@ export function getThumbnailPath(filename: string): string {
 
 // Delete video file
 export async function deleteVideoFile(filename: string): Promise<void> {
-  await fs.unlink(getVideoPath(filename));
+  // a video that is still processing or failed may not have its file yet
+  await fs.unlink(getVideoPath(filename)).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== 'ENOENT') throw err;
+  });
 }
 
 // Delete thumbnail file

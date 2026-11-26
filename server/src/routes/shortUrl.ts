@@ -161,7 +161,16 @@ router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response)
     if (wantsJson) {
       // For API calls, return JSON
       logger.info({ shortId }, 'Serving JSON response');
-      res.json({ video: metadata });
+      const { sourceFile: _internal, ...video } = metadata;
+      res.json({ video });
+      return;
+    }
+
+    // Still processing (or failed): no video to describe yet, so serve the plain app, which
+    // shows the status. Crawlers get no preview rather than caching a broken one.
+    if (metadata.status && metadata.status !== 'ready') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(await getClientIndexTemplate());
       return;
     }
 

@@ -218,6 +218,18 @@ router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response)
       return;
     }
 
+    if (video.status && video.status !== 'ready') {
+      const failed = video.status === 'failed';
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Security-Policy', 'frame-ancestors *');
+      res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8" />
+${failed ? '' : '<meta http-equiv="refresh" content="10" />'}
+<title>${failed ? 'Video unavailable' : 'Processing video'}</title>
+<style>html,body{margin:0;height:100%;background:#10151f;color:#e8edf5;font:16px system-ui,sans-serif;display:grid;place-items:center;text-align:center}</style>
+</head><body><p>${failed ? "This video couldn't be processed." : 'This video is still processing. It will appear here when it’s ready.'}</p></body></html>`);
+      return;
+    }
+
     // Build URLs
     const protocol = req.protocol;
     const host = req.get('host');

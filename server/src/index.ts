@@ -18,6 +18,7 @@ import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
 import { logger } from './utils/logger.js';
 import { startDeployHook, DEPLOY_EXIT_CODE } from './utils/deployHook.js';
+import { resumeProcessing } from './utils/processing.js';
 
 const execAsync = promisify(exec);
 
@@ -185,6 +186,7 @@ async function startServer() {
     await initializeDirectories();
     await initializeTempDirectory();
     logger.info('Directories initialized');
+    await resumeProcessing();
 
     const server = app.listen(Number(PORT), HOST as string, () => {
       logger.info({
