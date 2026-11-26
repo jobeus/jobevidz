@@ -17,7 +17,9 @@ const VIDEOS_DIR = path.join(__dirname, '../../../uploads/videos');
  * Get common yt-dlp arguments including proxy if configured
  */
 function getCommonYtDlpArgs(): string[] {
-  const args: string[] = [];
+  // YouTube now needs a JS runtime to solve its download challenges (without one, downloads
+  // get HTTP 403). yt-dlp only looks for deno by default; node is already on every server.
+  const args: string[] = ['--js-runtimes', 'node'];
 
   // Read proxy from environment variable at runtime (after dotenv.config() has run)
   const YTDLP_PROXY = process.env.YTDLP_PROXY;
@@ -131,7 +133,11 @@ export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo
     // Download options
     const downloadOptions = [
       ...commonArgs,
-      '--format', 'best[ext=mp4]/best', // Prefer mp4, fallback to best available
+      // Best H.264 video (plays everywhere) + AAC audio, up to 1080p, merged into one mp4 by
+      // ffmpeg. Many sites (YouTube included) no longer offer a single combined file, which
+      // the old 'best[ext=mp4]/best' required ("Requested format is not available").
+      '--format', 'bv*[vcodec^=avc1][height<=1080]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/b',
+      '--merge-output-format', 'mp4',
       '--output', tempFilePath,
       '--no-playlist', // Only download single video
       '--max-filesize', '1G', // Respect 1GB limit
