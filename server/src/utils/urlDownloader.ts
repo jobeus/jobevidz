@@ -24,10 +24,34 @@ function getCommonYtDlpArgs(): string[] {
 
   if (YTDLP_PROXY) {
     args.push('--proxy', YTDLP_PROXY);
-    logger.info({ proxy: YTDLP_PROXY }, 'Using proxy for yt-dlp');
+    logger.info({ proxy: redactCredentials(YTDLP_PROXY) }, 'Using proxy for yt-dlp');
   }
 
   return args;
+}
+
+/** Replaces the user:password part of any URL in `text` (the proxy URL is in yt-dlp's command line). */
+export function redactCredentials(text: string): string {
+  const proxy = process.env.YTDLP_PROXY;
+  if (proxy) text = text.split(proxy).join('<proxy>');
+  // greedy up to the last @ before the host, so a password containing @ is covered too
+  return text.replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/]*@/gi, '$1<redacted>@');
+}
+
+/**
+ * A user-facing error for a failed yt-dlp call. The raw message is yt-dlp's whole command line
+ * (proxy credentials included) plus every retry warning; keep yt-dlp's ERROR: line, redacted.
+ */
+function ytDlpError(what: string, error: unknown): Error {
+  const raw = redactCredentials(error instanceof Error ? error.message : String(error));
+  const errorLine = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('ERROR:'))
+    .pop();
+  const detail = (errorLine || raw).replace(/; please report this issue on .*$/s, '').slice(0, 500);
+  logger.warn({ detail }, what);
+  return new Error(`${what}: ${detail}`);
 }
 
 // Ensure temp directory exists
@@ -82,7 +106,7 @@ export async function extractUrlMetadata(url: string): Promise<UrlVideoMetadata>
       uploadDate: info.upload_date,
     };
   } catch (error) {
-    throw new Error(`Failed to extract metadata from URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw ytDlpError('Failed to extract metadata from URL', error);
   }
 }
 
@@ -142,7 +166,7 @@ export async function downloadVideoFromUrl(url: string): Promise<DownloadedVideo
       ));
     } catch {}
 
-    throw new Error(`Failed to download video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw ytDlpError('Failed to download video', error);
   }
 }
 
@@ -244,6 +268,6 @@ export async function getVideoStreamUrl(url: string): Promise<string> {
 
     throw new Error('No preview URL available');
   } catch (error) {
-    throw new Error(`Failed to get stream URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw ytDlpError('Failed to get stream URL', error);
   }
 }

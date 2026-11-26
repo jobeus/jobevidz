@@ -47,12 +47,12 @@ pm2 logs jobevidz-api --lines 0
 After restarting, try uploading an Instagram URL. You should see in the logs:
 
 ```
-"Using proxy for yt-dlp" {"proxy":"http://sphgz6h0i8:..."}
+"Using proxy for yt-dlp" {"proxy":"http://<redacted>"}
 ```
 
 And the yt-dlp command should include:
 ```
-yt-dlp --proxy http://sphgz6h0i8:... --dump-json --no-playlist https://...
+yt-dlp --proxy http://<redacted> --dump-json --no-playlist https://...
 ```
 
 ## Quick Test
