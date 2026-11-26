@@ -14,10 +14,8 @@ import {
   deleteThumbnailFile,
 } from '../utils/fileStorage.js';
 import { hasVideoStream } from '../utils/videoMetadata.js';
-import { enqueueVideo } from '../utils/processing.js';
+import { createProcessingVideo } from '../utils/processing.js';
 import {
-  generateUniqueShortId,
-  mapShortIdToVideoId,
   deleteShortIdMapping,
 } from '../utils/idGenerator.js';
 import { logger, logVideoUpload, logVideoDelete } from '../utils/logger.js';
@@ -57,39 +55,6 @@ const upload = multer({
 function publicVideo(video: VideoMetadata): Omit<VideoMetadata, 'sourceFile'> {
   const { sourceFile: _internal, ...rest } = video;
   return rest;
-}
-
-/** A new video record that the processing queue will fill in. */
-async function createProcessingVideo(
-  user: { userId: string; username: string },
-  fields: { title: string; description: string; originalFilename: string; sourceUrl?: string; sourceFile?: string; fileSize?: number; filename: string },
-): Promise<VideoMetadata> {
-  const now = new Date().toISOString();
-  const video: VideoMetadata = {
-    id: nanoid(),
-    shortId: await generateUniqueShortId(),
-    userId: user.userId,
-    username: user.username,
-    filename: fields.filename,
-    originalFilename: fields.originalFilename,
-    title: fields.title,
-    description: fields.description,
-    fileSize: fields.fileSize || 0,
-    duration: 0,
-    width: 0,
-    height: 0,
-    format: 'mp4',
-    codec: '',
-    status: 'processing',
-    sourceUrl: fields.sourceUrl,
-    sourceFile: fields.sourceFile,
-    uploadedAt: now,
-    updatedAt: now,
-  };
-  await writeVideoMetadata(video.id, video);
-  await mapShortIdToVideoId(video.shortId, video.id);
-  enqueueVideo(video.id);
-  return video;
 }
 
 // Upload a video file. Replies as soon as the file is stored; conversion runs in the background.

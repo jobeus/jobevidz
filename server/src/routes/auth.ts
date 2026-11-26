@@ -2,7 +2,9 @@ import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 import { readUsers, writeUsers } from '../utils/fileStorage.js';
 import { hashPassword, verifyPassword, generateToken, sanitizeUser } from '../utils/auth.js';
-import { User, LoginCredentials, RegisterCredentials, AuthResponse } from '../types/index.js';
+import { User, LoginCredentials, RegisterCredentials, AuthResponse, AuthRequest } from '../types/index.js';
+import { authenticateToken, requireSession } from '../middleware/auth.js';
+import { createApiKey, listApiKeys, revokeApiKey } from '../utils/apiKeys.js';
 import { logger, logAuth } from '../utils/logger.js';
 
 const router = Router();
@@ -129,6 +131,33 @@ router.get('/verify', async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     res.status(403).json({ error: 'Invalid or expired token' });
   }
+});
+
+// Personal API keys (for the iOS share shortcut and similar). Managing them needs a sign-in.
+router.get('/keys', authenticateToken, requireSession, async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json({ keys: await listApiKeys(req.user!.userId) });
+});
+
+router.post('/keys', authenticateToken, requireSession, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const name = typeof req.body?.name === 'string' ? req.body.name : '';
+    const { key, info } = await createApiKey(req.user!.userId, name);
+    logger.info({ userId: req.user!.userId, keyId: info.id }, 'API key created');
+    res.status(201).json({ key, info });
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to create API key');
+    res.status(500).json({ error: 'Failed to create the key' });
+  }
+});
+
+router.delete('/keys/:keyId', authenticateToken, requireSession, async (req: AuthRequest, res: Response): Promise<void> => {
+  const revoked = await revokeApiKey(req.user!.userId, String(req.params.keyId));
+  if (!revoked) {
+    res.status(404).json({ error: 'Key not found' });
+    return;
+  }
+  logger.info({ userId: req.user!.userId, keyId: req.params.keyId }, 'API key revoked');
+  res.json({ message: 'Key revoked' });
 });
 
 export default router;

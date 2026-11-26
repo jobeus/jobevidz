@@ -13,6 +13,7 @@ import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
 import oembedRoutes from './routes/oembed.js';
 import embedRoutes from './routes/embed.js';
+import shareRoutes from './routes/share.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
@@ -113,6 +114,7 @@ app.use('/uploads/thumbnails', express.static(path.join(__dirname, '../../upload
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/share', shareRoutes);
 app.use('/v', shortUrlRoutes);
 app.use('/oembed', oembedRoutes);
 app.use('/embed', embedRoutes);

@@ -39,7 +39,9 @@ export default function TopBar() {
               <NavLink to="/dashboard" className="nav-link">
                 My videos
               </NavLink>
-              <span className="topbar-user">{user.username}</span>
+              <NavLink to="/account" className="nav-link topbar-user" title="Account and API keys">
+                {user.username}
+              </NavLink>
               <button
                 type="button"
                 className="nav-link"

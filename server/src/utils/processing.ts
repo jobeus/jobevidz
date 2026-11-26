@@ -13,6 +13,9 @@ import { downloadVideoFromUrl, redactCredentials } from './urlDownloader.js';
 import { logger } from './logger.js';
 import type { VideoMetadata } from '../types/index.js';
 
+import { nanoid } from 'nanoid';
+import { generateUniqueShortId, mapShortIdToVideoId } from './idGenerator.js';
+
 const CONCURRENCY = Number(process.env.PROCESSING_CONCURRENCY || 2);
 const waiting: string[] = [];
 const running = new Set<string>();
@@ -119,4 +122,37 @@ async function processVideo(videoId: string): Promise<void> {
       updatedAt: new Date().toISOString(),
     });
   }
+}
+
+/** A new video record that the processing queue will fill in. */
+export async function createProcessingVideo(
+  user: { userId: string; username: string },
+  fields: { title: string; description: string; originalFilename: string; sourceUrl?: string; sourceFile?: string; fileSize?: number; filename: string },
+): Promise<VideoMetadata> {
+  const now = new Date().toISOString();
+  const video: VideoMetadata = {
+    id: nanoid(),
+    shortId: await generateUniqueShortId(),
+    userId: user.userId,
+    username: user.username,
+    filename: fields.filename,
+    originalFilename: fields.originalFilename,
+    title: fields.title,
+    description: fields.description,
+    fileSize: fields.fileSize || 0,
+    duration: 0,
+    width: 0,
+    height: 0,
+    format: 'mp4',
+    codec: '',
+    status: 'processing',
+    sourceUrl: fields.sourceUrl,
+    sourceFile: fields.sourceFile,
+    uploadedAt: now,
+    updatedAt: now,
+  };
+  await writeVideoMetadata(video.id, video);
+  await mapShortIdToVideoId(video.shortId, video.id);
+  enqueueVideo(video.id);
+  return video;
 }

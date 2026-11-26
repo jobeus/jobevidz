@@ -1,0 +1,2 @@
+# build outputs; the published, signed copy is client/public/Share to vidz.shortcut
+*.shortcut

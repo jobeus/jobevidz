@@ -6,6 +6,8 @@ export interface User {
   email: string;
   passwordHash: string;
   createdAt: string;
+  /** personal API keys (hashed); see utils/apiKeys.ts */
+  apiKeys?: import('../utils/apiKeys.js').StoredApiKey[];
 }
 
 export interface UserPublic {
@@ -20,6 +22,8 @@ export interface AuthRequest<P = Record<string, string>> extends Request<P> {
     userId: string;
     username: string;
   };
+  /** true when the request was authenticated with an API key rather than a sign-in */
+  viaApiKey?: boolean;
 }
 
 export interface VideoMetadata {

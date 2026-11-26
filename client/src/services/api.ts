@@ -51,6 +51,29 @@ export const authApi = {
   },
 };
 
+export interface ApiKeyInfo {
+  id: string;
+  name: string;
+  /** first and last characters, to tell keys apart */
+  hint: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+// Personal API keys (need a signed-in session)
+export const keysApi = {
+  list: async (): Promise<ApiKeyInfo[]> => (await api.get<{ keys: ApiKeyInfo[] }>('/api/auth/keys')).data.keys,
+  /** The full key is only ever returned here, once. */
+  create: async (name: string): Promise<{ key: string; info: ApiKeyInfo }> =>
+    (await api.post('/api/auth/keys', { name })).data,
+  revoke: async (id: string): Promise<void> => {
+    await api.delete(`/api/auth/keys/${id}`);
+  },
+};
+
+/** The endpoint the share shortcut posts to. */
+export const SHARE_ENDPOINT = `${API_BASE_URL}/api/share`;
+
 // Video API
 export const videoApi = {
   upload: async (

@@ -273,11 +273,11 @@ textarea {
 .nav-link.active {
   color: var(--ink);
 }
-.topbar-user {
-  padding: 0 8px 0 12px;
+.topbar-user.nav-link {
+  margin-left: 4px;
   border-left: 1px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
-  font-weight: 600;
 }
 
 /* ---------- pages ---------- */
@@ -764,6 +764,108 @@ textarea {
 .facts dd {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- account ---------- */
+
+.account-who {
+  margin-top: 8px;
+}
+.account-section {
+  max-width: 760px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--step-2);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.account-text {
+  max-width: var(--measure);
+  margin-top: 12px;
+}
+.account-text code,
+.newkey-value {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+.account-text code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface-2);
+}
+.steps {
+  max-width: var(--measure);
+  margin: 16px 0 20px;
+  padding-left: 1.4em;
+}
+.steps li + li {
+  margin-top: 6px;
+}
+.keys {
+  display: grid;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.key-name {
+  font-weight: 700;
+}
+.key-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+.newkey {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1.5px solid var(--key);
+  border-radius: calc(var(--radius-control) + 6px);
+  background: var(--key-soft);
+}
+.newkey-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.newkey-value {
+  flex: 1 1 260px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font-size: var(--step-0);
+  user-select: all;
+}
+.newkey-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 24px;
+}
+.newkey-form .field {
+  flex: 1 1 240px;
 }
 
 /* ---------- small screens ---------- */

@@ -1,0 +1,44 @@
+// Share to vidz: an iOS share-sheet shortcut. Share a video (Photos, Files) or a link
+// (YouTube, Instagram, TikTok, Safari, ...) and the vidz short link lands on the clipboard.
+// The video finishes processing on the server; the link works straight away.
+//
+// Build (from this folder):  cherri share-to-vidz.cherri --share=anyone
+// It asks for a vidz API key when added (create one on the Account page at vidz.jobe.wtf).
+// Server side: POST /api/share (server/src/routes/share.ts).
+
+#include 'actions/sharing'
+#include 'actions/web'
+
+#define name Share to vidz
+#define glyph filmstrip
+#define color green
+#define from sharesheet
+#define inputs url, webpage, text, media, file
+// Run from the home screen or Siri with nothing shared: use the link on the clipboard.
+#define noinput getclipboard
+
+#question APIKey "Paste your vidz API key (vidz.jobe.wtf, then Account)" ""
+
+const Endpoint = "https://vidzapi.jobe.wtf/api/share"
+// The question fills in this Text action when the shortcut is added.
+@apiKey = text(APIKey)
+
+// A link anywhere in what was shared (a URL, a web page, a caption with a link in it)?
+@urls = getURLs(ShortcutInput)
+@linkCount = count(@urls)
+
+if @linkCount > 0 {
+    @reply = jsonRequest(Endpoint, "POST", {"url": "{@urls}"}, {"Authorization": "Bearer {@apiKey}"})
+} else {
+    // Otherwise it's a file: upload it as is. The server converts any format to mp4.
+    @fileName = getName(ShortcutInput)
+    @reply = fileRequest(Endpoint, "POST", ShortcutInput, {"Authorization": "Bearer {@apiKey}", "X-Filename": "{@fileName}"})
+}
+
+@replyText = "{@reply}"
+if @replyText beginsWith "https://" {
+    setClipboard(@replyText)
+    showNotification("{@replyText}", "Link copied")
+} else {
+    showNotification("{@replyText}", "Couldn’t share to vidz")
+}
