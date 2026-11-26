@@ -10,7 +10,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <main className="wrap page">
+        <p className="quiet">Loading…</p>
+      </main>
+    );
   }
 
   if (!user) {
@@ -21,4 +25,3 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 export default ProtectedRoute;
-

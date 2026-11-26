@@ -21,6 +21,9 @@ export interface RegisterCredentials {
   password: string;
 }
 
+/** 'processing' until the server has converted it; absent on older videos, which are ready. */
+export type VideoStatus = 'processing' | 'ready' | 'failed';
+
 export interface VideoMetadata {
   id: string;
   shortId: string;
@@ -37,6 +40,11 @@ export interface VideoMetadata {
   format: string;
   codec: string;
   thumbnailFilename?: string;
+  status?: VideoStatus;
+  /** why processing failed */
+  error?: string;
+  /** link the video was imported from */
+  sourceUrl?: string;
   uploadedAt: string;
   updatedAt: string;
 }
@@ -47,28 +55,8 @@ export interface VideoUploadResponse {
   url: string;
 }
 
-export interface UrlVideoMetadata {
-  title: string;
-  description: string;
-  uploader: string;
-  duration: number;
-  width: number;
-  height: number;
-  format: string;
-  originalUrl: string;
-  thumbnailUrl?: string;
-  uploadDate?: string;
-}
-
-export interface UrlPreviewResponse {
-  metadata: UrlVideoMetadata;
-  previewId: string;
-  streamUrl?: string;
-}
-
 export interface UrlUploadRequest {
-  previewId: string;
-  title: string;
-  description: string;
+  url: string;
+  title?: string;
+  description?: string;
 }
-

@@ -7,7 +7,6 @@ import type {
   RegisterCredentials,
   VideoMetadata,
   VideoUploadResponse,
-  UrlPreviewResponse,
   UrlUploadRequest,
 } from '../types/index';
 
@@ -113,21 +112,23 @@ export const videoApi = {
     await api.delete(`/api/videos/${videoId}`);
   },
 
-  // URL-based upload methods
-  previewFromUrl: async (url: string): Promise<UrlPreviewResponse> => {
-    const response = await api.post<UrlPreviewResponse>('/api/videos/url-preview', { url });
-    return response.data;
-  },
-
-  uploadFromUrl: async (request: UrlUploadRequest): Promise<VideoUploadResponse> => {
+  /** Starts importing a video from a link; the reply comes back at once with status 'processing'. */
+  importFromUrl: async (request: UrlUploadRequest): Promise<VideoUploadResponse> => {
     const response = await api.post<VideoUploadResponse>('/api/videos/url-upload', request);
     return response.data;
   },
+
 };
 
 export const getVideoUrl = (filename: string): string => {
   return `${API_BASE_URL}/uploads/videos/${filename}`;
 };
+
+/** True once the server has finished converting the video (older videos have no status). */
+export const isReady = (video: VideoMetadata): boolean => !video.status || video.status === 'ready';
+
+/** The public short link for a video, e.g. https://vidz.jobe.wtf/v/2r8Fy */
+export const shareUrlFor = (shortId: string): string => `${window.location.origin}/v/${shortId}`;
 
 export const getThumbnailUrl = (filename: string): string => {
   return `${API_BASE_URL}/uploads/thumbnails/${filename}`;

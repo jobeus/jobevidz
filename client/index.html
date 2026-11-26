@@ -2,9 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>jobe vidz</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef1f5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1522" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>vidz</title>
+    <script>
+      // Apply a pinned light/dark theme before first paint (see src/utils/theme.ts).
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

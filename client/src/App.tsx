@@ -1,24 +1,24 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './utils/AuthContext';
-import Navbar from './components/Navbar';
+import TopBar from './components/TopBar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Upload from './pages/Upload';
-import UploadFromUrl from './pages/UploadFromUrl';
 import VideoPlayer from './pages/VideoPlayer';
-import './App.css';
 
-function App() {
+export default function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
         <BrowserRouter>
-          <div className="app">
-            <Navbar />
+          <a className="skip-link" href="#content">
+            Skip to content
+          </a>
+          <TopBar />
+          <div id="content">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -31,23 +31,11 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/upload"
-                element={
-                  <ProtectedRoute>
-                    <Upload />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/upload-url"
-                element={
-                  <ProtectedRoute>
-                    <UploadFromUrl />
-                  </ProtectedRoute>
-                }
-              />
+              {/* adding videos now happens on My videos */}
+              <Route path="/upload" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/upload-url" element={<Navigate to="/dashboard" replace />} />
               <Route path="/v/:shortId" element={<VideoPlayer />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </BrowserRouter>
@@ -55,5 +43,3 @@ function App() {
     </HelmetProvider>
   );
 }
-
-export default App;
