@@ -29,6 +29,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
+// Trust X-Forwarded-* only from a proxy on this machine (Apache in production). Without it,
+// req.protocol is always "http" (share/embed/oEmbed URLs came out as http://) and req.ip is
+// Apache's 127.0.0.1, so the rate limiter treated every visitor as one client.
+app.set('trust proxy', 'loopback');
 const PORT = process.env.PORT || 3000;
 // Optional bind address (unset = all interfaces). Production sets HOST=127.0.0.1 behind nginx.
 const HOST = process.env.HOST;
