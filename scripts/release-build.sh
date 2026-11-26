@@ -11,7 +11,7 @@ echo "release-build: server"
 (cd server && npm ci --include=dev --no-audit --no-fund && npm run build)
 
 echo "release-build: client"
-(cd client && npm ci --include=dev --no-audit --no-fund --legacy-peer-deps \
+(cd client && npm ci --include=dev --no-audit --no-fund \
   && npx tsc -b && npx vite build --outDir dist-next --emptyOutDir)
 
 rm -rf client/dist-prev

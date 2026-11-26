@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../utils/AuthContext';
-import { authApi } from '../services/api';
+import { useAuth } from '../utils/useAuth';
+import { authApi, errorMessage } from '../services/api';
 import './Auth.css';
 
 const Register: React.FC = () => {
@@ -34,8 +34,8 @@ const Register: React.FC = () => {
       const response = await authApi.register({ username, email, password });
       login(response.token, response.user);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+    } catch (err) {
+      setError(errorMessage(err, 'Registration failed. Please try again.'));
     } finally {
       setIsLoading(false);
     }

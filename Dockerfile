@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for JobeVidz Server
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
@@ -23,7 +23,7 @@ COPY server/tsconfig.json ./server/
 RUN cd server && npm run build
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM node:26-alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache \

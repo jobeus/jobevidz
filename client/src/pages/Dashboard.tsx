@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { videoApi, getVideoUrl } from '../services/api';
+import { videoApi, getVideoUrl, errorMessage } from '../services/api';
 import type { VideoMetadata } from '../types/index';
 import './Dashboard.css';
 
@@ -12,22 +12,21 @@ const Dashboard: React.FC = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
+  // State is only set in promise callbacks, so the effect below can call this.
+  const fetchVideos = () =>
+    videoApi
+      .getMyVideos()
+      .then((response) =>
+        setVideos(response.videos.sort((a, b) =>
+          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+        ))
+      )
+      .catch((err) => setError(errorMessage(err, 'Failed to load videos')))
+      .finally(() => setIsLoading(false));
+
   useEffect(() => {
     fetchVideos();
   }, []);
-
-  const fetchVideos = async () => {
-    try {
-      const response = await videoApi.getMyVideos();
-      setVideos(response.videos.sort((a, b) => 
-        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-      ));
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load videos');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleEdit = (video: VideoMetadata) => {
     setEditingVideo(video.id);
@@ -43,8 +42,8 @@ const Dashboard: React.FC = () => {
       });
       setEditingVideo(null);
       fetchVideos();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update video');
+    } catch (err) {
+      alert(errorMessage(err, 'Failed to update video'));
     }
   };
 
@@ -62,8 +61,8 @@ const Dashboard: React.FC = () => {
     try {
       await videoApi.deleteVideo(videoId);
       fetchVideos();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete video');
+    } catch (err) {
+      alert(errorMessage(err, 'Failed to delete video'));
     }
   };
 

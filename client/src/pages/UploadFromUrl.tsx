@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { videoApi } from '../services/api';
+import { videoApi, errorMessage } from '../services/api';
 import type { UrlPreviewResponse } from '../types/index';
 import './UploadFromUrl.css';
 
@@ -41,8 +41,8 @@ const UploadFromUrl: React.FC = () => {
       setTitle(preview.metadata.title);
       setDescription(preview.metadata.description);
       
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load video from URL. Please check the URL and try again.');
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to load video from URL. Please check the URL and try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +79,8 @@ const UploadFromUrl: React.FC = () => {
         navigate(`/v/${response.video.shortId}`);
       }, 2000);
       
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+    } catch (err) {
+      setError(errorMessage(err, 'Upload failed. Please try again.'));
     } finally {
       setIsUploading(false);
     }

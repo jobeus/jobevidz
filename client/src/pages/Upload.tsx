@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { videoApi } from '../services/api';
+import { videoApi, errorMessage } from '../services/api';
 import './Upload.css';
 
 const Upload: React.FC = () => {
@@ -90,8 +90,8 @@ const Upload: React.FC = () => {
       setTimeout(() => {
         navigate(`/v/${response.video.shortId}`);
       }, 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+    } catch (err) {
+      setError(errorMessage(err, 'Upload failed. Please try again.'));
     } finally {
       setIsUploading(false);
     }

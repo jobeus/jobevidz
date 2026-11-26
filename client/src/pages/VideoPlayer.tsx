@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { videoApi, getVideoUrl, getThumbnailUrl } from '../services/api';
+import { videoApi, getVideoUrl, getThumbnailUrl, errorMessage } from '../services/api';
 import type { VideoMetadata } from '../types/index';
 import './VideoPlayer.css';
 
@@ -20,8 +20,8 @@ const VideoPlayer: React.FC = () => {
       try {
         const response = await videoApi.getVideoByShortId(shortId);
         setVideo(response.video);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load video');
+      } catch (err) {
+        setError(errorMessage(err, 'Failed to load video'));
       } finally {
         setIsLoading(false);
       }

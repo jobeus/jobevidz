@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { AxiosProgressEvent } from 'axios';
 import type {
   AuthResponse,
+  User,
   LoginCredentials,
   RegisterCredentials,
   VideoMetadata,
@@ -9,6 +10,14 @@ import type {
   UrlPreviewResponse,
   UrlUploadRequest,
 } from '../types/index';
+
+/** The API's `{ error }` message from a failed request, or `fallback`. */
+export function errorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError<{ error?: string }>(err) && err.response?.data?.error) {
+    return err.response.data.error;
+  }
+  return fallback;
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -37,7 +46,7 @@ export const authApi = {
     return response.data;
   },
 
-  verify: async (): Promise<{ user: any }> => {
+  verify: async (): Promise<{ user: User }> => {
     const response = await api.get('/api/auth/verify');
     return response.data;
   },

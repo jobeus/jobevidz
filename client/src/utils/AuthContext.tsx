@@ -1,27 +1,19 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
+import { AuthContext } from './authContextValue';
 import type { User } from '../types/index';
 import { authApi } from '../services/api';
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  isLoading: boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Loading from the first render when a token is stored, so protected routes wait for
+  // verification instead of redirecting a signed-in user to /login on reload.
+  const [isLoading, setIsLoading] = useState(() => localStorage.getItem('token') !== null);
 
   useEffect(() => {
     const verifyToken = async () => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
-        setIsLoading(true);
         try {
           const response = await authApi.verify();
           setUser(response.user);
@@ -58,12 +50,3 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
