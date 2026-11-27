@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getVideoIdFromShortId } from '../utils/idGenerator.js';
 import { readVideoMetadata } from '../utils/fileStorage.js';
 import { logger } from '../utils/logger.js';
+import { thumbnailSize } from '../utils/videoMetadata.js';
 
 const router = Router();
 
@@ -18,6 +19,7 @@ function generateOEmbedJSON(
   const thumbnailUrl = video.thumbnailFilename 
     ? `${baseUrl}/uploads/thumbnails/${video.thumbnailFilename}`
     : undefined;
+  const thumb = thumbnailUrl ? thumbnailSize(video.width, video.height) : null;
 
   // Calculate dimensions respecting maxWidth and maxHeight
   let width = video.width;
@@ -47,8 +49,8 @@ function generateOEmbedJSON(
     height,
     html: embedHTML,
     thumbnail_url: thumbnailUrl,
-    thumbnail_width: 1280,
-    thumbnail_height: 720,
+    thumbnail_width: thumb?.width,
+    thumbnail_height: thumb?.height,
   };
 }
 
@@ -85,8 +87,8 @@ function generateOEmbedXML(
   <height>${data.height}</height>
   <html>${escapeXml(data.html)}</html>
   ${data.thumbnail_url ? `<thumbnail_url>${escapeXml(data.thumbnail_url)}</thumbnail_url>` : ''}
-  ${data.thumbnail_url ? `<thumbnail_width>${data.thumbnail_width}</thumbnail_width>` : ''}
-  ${data.thumbnail_url ? `<thumbnail_height>${data.thumbnail_height}</thumbnail_height>` : ''}
+  ${data.thumbnail_width ? `<thumbnail_width>${data.thumbnail_width}</thumbnail_width>` : ''}
+  ${data.thumbnail_height ? `<thumbnail_height>${data.thumbnail_height}</thumbnail_height>` : ''}
 </oembed>`;
 }
 

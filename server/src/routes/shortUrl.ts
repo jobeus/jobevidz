@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getVideoIdFromShortId } from '../utils/idGenerator.js';
 import { readVideoMetadata } from '../utils/fileStorage.js';
 import { logger } from '../utils/logger.js';
+import { thumbnailSize } from '../utils/videoMetadata.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -69,6 +70,7 @@ function generateMetaTags(
   const title = escapeHtml(video.title || 'Video');
   const description = escapeHtml(video.description || `Watch ${video.title} on JobeVidz`);
   const siteName = 'JobeVidz';
+  const thumb = thumbnailSize(video.width, video.height);
 
   return `
     <!-- Primary Meta Tags -->
@@ -85,8 +87,8 @@ function generateMetaTags(
     ${thumbnailUrl ? `<meta property="og:image" content="${thumbnailUrl}" />` : ''}
     ${thumbnailUrl ? `<meta property="og:image:secure_url" content="${thumbnailUrl}" />` : ''}
     ${thumbnailUrl ? `<meta property="og:image:type" content="image/jpeg" />` : ''}
-    ${thumbnailUrl ? `<meta property="og:image:width" content="1200" />` : ''}
-    ${thumbnailUrl ? `<meta property="og:image:height" content="630" />` : ''}
+    ${thumbnailUrl && thumb ? `<meta property="og:image:width" content="${thumb.width}" />` : ''}
+    ${thumbnailUrl && thumb ? `<meta property="og:image:height" content="${thumb.height}" />` : ''}
     ${thumbnailUrl ? `<meta property="og:image:alt" content="${title}" />` : ''}
 
     <!-- Video Meta Tags for Direct Playback (Discord, iMessage, etc.) -->

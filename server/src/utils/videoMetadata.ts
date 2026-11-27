@@ -1,4 +1,3 @@
-import ffmpeg from 'fluent-ffmpeg';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
@@ -15,34 +14,60 @@ export interface ExtractedMetadata {
 }
 
 export async function extractVideoMetadata(filePath: string): Promise<ExtractedMetadata> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, metadata) => {
-      if (err) {
-        reject(new Error(`Failed to extract video metadata: ${err.message}`));
-        return;
-      }
-
-      const videoStream = metadata.streams.find(s => s.codec_type === 'video');
-
-      if (!videoStream) {
-        reject(new Error('No video stream found in file'));
-        return;
-      }
-
-      resolve({
-        duration: metadata.format.duration || 0,
-        width: videoStream.width || 0,
-        height: videoStream.height || 0,
-        format: metadata.format.format_name || 'unknown',
-        codec: videoStream.codec_name || 'unknown',
-      });
-    });
+  const { stdout } = await execFileAsync(
+    'ffprobe',
+    ['-v', 'error', '-show_format', '-show_streams', '-of', 'json', filePath],
+    { maxBuffer: 16 * 1024 * 1024 },
+  ).catch((err: Error & { stderr?: string }) => {
+    throw new Error(`Failed to extract video metadata: ${(err.stderr || err.message).trim()}`);
   });
+  const probe = JSON.parse(stdout);
+  const streams: (ProbeStream & {
+    width?: number;
+    height?: number;
+    tags?: { rotate?: string };
+    side_data_list?: { rotation?: number }[];
+  })[] = probe.streams || [];
+  const videoStream = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
+  if (!videoStream) throw new Error('No video stream found in file');
+
+  // Phone videos are often stored sideways with a rotation flag; players (and ffmpeg) show
+  // them turned upright, so report the size as shown, not as stored.
+  const rotation = Number(
+    videoStream.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ??
+      videoStream.tags?.rotate ??
+      0,
+  );
+  const sideways = Math.abs(rotation) % 180 === 90;
+  const storedWidth = videoStream.width || 0;
+  const storedHeight = videoStream.height || 0;
+
+  return {
+    duration: Number(probe.format?.duration) || 0,
+    width: sideways ? storedHeight : storedWidth,
+    height: sideways ? storedWidth : storedHeight,
+    format: probe.format?.format_name || 'unknown',
+    codec: videoStream.codec_name || 'unknown',
+  };
+}
+
+const THUMBNAIL_MAX = 1200;
+
+/**
+ * The size generateThumbnail makes for a video of this size: the video's own shape, scaled
+ * down (never up) so the longest side is at most 1200, even numbers. Null if the size is unknown.
+ * Link previews (Discord, iMessage) size the card from the thumbnail before playback, so it
+ * must have the video's aspect ratio or the card is letterboxed until you press play.
+ */
+export function thumbnailSize(width: number, height: number): { width: number; height: number } | null {
+  if (!(width > 0 && height > 0)) return null;
+  const k = Math.min(1, THUMBNAIL_MAX / Math.max(width, height));
+  const even = (n: number) => Math.max(2, Math.round((n * k) / 2) * 2);
+  return { width: even(width), height: even(height) };
 }
 
 /**
- * Generate a 1200x630 JPEG thumbnail (Open Graph size) from one frame of a video,
- * scaled to fit and padded with black so the aspect ratio is preserved.
+ * Generate a JPEG thumbnail from one frame of a video, at thumbnailSize() of the video.
  *
  * Runs ffmpeg directly: fluent-ffmpeg's screenshots() adds its own -filter_complex/-map,
  * which ffmpeg 8+ refuses to combine with this -vf ("Error opening output file").
@@ -57,11 +82,16 @@ export async function generateThumbnail(
   thumbnailFilename: string,
   timeInSeconds: number = 1
 ): Promise<string> {
+  // the exact size the share page advertises (see thumbnailSize), so the two always agree
+  const { width, height } = await extractVideoMetadata(videoPath);
+  const size = thumbnailSize(width, height);
   await execFileAsync('ffmpeg', [
     '-hide_banner', '-loglevel', 'error', '-y',
     '-ss', String(Math.max(0, timeInSeconds)),
     '-i', videoPath,
-    '-vf', 'scale=1200:630:force_original_aspect_ratio=decrease,pad=1200:630:(ow-iw)/2:(oh-ih)/2:black',
+    '-vf', size
+      ? `scale=${size.width}:${size.height}`
+      : `scale='min(${THUMBNAIL_MAX},iw)':'min(${THUMBNAIL_MAX},ih)':force_original_aspect_ratio=decrease`,
     '-frames:v', '1',
     '-q:v', '3',
     '-update', '1',
