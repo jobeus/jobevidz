@@ -153,10 +153,10 @@ app.get('/health', async (_req, res) => {
       health.status = 'degraded';
     }
 
-    // Check disk space (uploads directory)
+    // Check disk space (uploads directory; -L because on grizzly it is a link into shared/)
     try {
       const uploadsPath = path.join(__dirname, '../../uploads');
-      const { stdout } = await execAsync(`du -sh ${uploadsPath}`);
+      const { stdout } = await execAsync(`du -shL ${uploadsPath}`);
       health.uploadsSize = stdout.split('\t')[0];
     } catch {
       health.uploadsSize = 'unknown';
