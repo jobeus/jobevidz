@@ -139,6 +139,24 @@ function generateMetaTags(
   `;
 }
 
+// Link-preview fetchers (Discord, iMessage, Slack, ...). They read the page once and cache
+// what they got, so a page fetched while the video is still processing leaves the link
+// without a preview for good.
+const PREVIEW_BOT = /bot\b|facebookexternalhit|facebot|slack|whatsapp|telegram|embedly|preview|skype|vkshare|pinterest|redditbot|mastodon/i;
+// How long such a fetcher is kept waiting for a video to finish (most give up at ~10 s).
+const PREVIEW_WAIT_MS = 8000;
+
+/** Re-reads the video until it is ready (or failed), for at most PREVIEW_WAIT_MS. */
+async function waitUntilProcessed(videoId: string) {
+  const deadline = Date.now() + PREVIEW_WAIT_MS;
+  let metadata = await readVideoMetadata(videoId);
+  while (metadata?.status === 'processing' && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    metadata = await readVideoMetadata(videoId);
+  }
+  return metadata;
+}
+
 // Get video by short ID - returns HTML with meta tags by default, JSON if requested
 router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response): Promise<void> => {
   try {
@@ -150,7 +168,7 @@ router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response)
       return;
     }
 
-    const metadata = await readVideoMetadata(videoId);
+    let metadata = await readVideoMetadata(videoId);
     if (!metadata) {
       res.status(404).json({ error: 'Video not found' });
       return;
@@ -159,6 +177,14 @@ router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response)
     // Check if JSON is explicitly requested via Accept header or query parameter
     const acceptHeader = req.get('accept') || '';
     const wantsJson = req.query.format === 'json' || acceptHeader.includes('application/json');
+
+    // A link pasted the moment it was made reaches preview fetchers before the video is
+    // ready (a shared Instagram link takes ~10 s to download): hold them a few seconds.
+    if (!wantsJson && metadata.status === 'processing' && PREVIEW_BOT.test(req.get('user-agent') || '')) {
+      const waited = await waitUntilProcessed(videoId);
+      logger.info({ shortId, status: waited?.status }, 'Held a preview fetcher while the video was processing');
+      if (waited) metadata = waited;
+    }
 
     if (wantsJson) {
       // For API calls, return JSON
@@ -172,6 +198,7 @@ router.get('/:shortId', async (req: Request<{ shortId: string }>, res: Response)
     // shows the status. Crawlers get no preview rather than caching a broken one.
     if (metadata.status && metadata.status !== 'ready') {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
       res.send(await getClientIndexTemplate());
       return;
     }
