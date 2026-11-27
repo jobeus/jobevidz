@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
+import { chmodSync, rmSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import videoRoutes from './routes/videos.js';
 import shortUrlRoutes from './routes/shortUrl.js';
@@ -18,7 +19,6 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { initializeDirectories } from './utils/fileStorage.js';
 import { initializeTempDirectory } from './utils/urlDownloader.js';
 import { logger } from './utils/logger.js';
-import { startDeployHook, DEPLOY_EXIT_CODE } from './utils/deployHook.js';
 import { resumeProcessing } from './utils/processing.js';
 
 const execAsync = promisify(exec);
@@ -31,10 +31,13 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const app = express();
+// On grizzly the unit sets APP_SOCKET and Apache proxies to that unix socket.
+const SOCKET = process.env.APP_SOCKET;
 // Trust X-Forwarded-* only from a proxy on this machine (Apache in production). Without it,
 // req.protocol is always "http" (share/embed/oEmbed URLs came out as http://) and req.ip is
-// Apache's 127.0.0.1, so the rate limiter treated every visitor as one client.
-app.set('trust proxy', 'loopback');
+// Apache's 127.0.0.1, so the rate limiter treated every visitor as one client. A unix
+// socket has no peer address to check, and only Apache connects to it: trust that one hop.
+app.set('trust proxy', SOCKET ? 1 : 'loopback');
 const PORT = process.env.PORT || 3000;
 // Bind address: loopback unless HOST says otherwise (Apache proxies to it on grizzly).
 const HOST = process.env.HOST || '127.0.0.1';
@@ -193,20 +196,25 @@ async function startServer() {
     logger.info('Directories initialized');
     await resumeProcessing();
 
-    const server = app.listen(Number(PORT), HOST as string, () => {
+    const started = () => {
+      // Apache runs as another user and needs write access to connect.
+      if (SOCKET) chmodSync(SOCKET, 0o666);
       logger.info({
-        port: PORT,
+        listen: SOCKET ? `unix:${SOCKET}` : `${HOST}:${PORT}`,
         environment: process.env.NODE_ENV || 'development',
         uploadsDir: path.join(__dirname, '../../uploads'),
         dataDir: path.join(__dirname, '../../data'),
       }, 'Server started successfully');
-    });
+    };
+    // (a socket left behind by a process that was killed would make listen fail)
+    if (SOCKET) rmSync(SOCKET, { force: true });
+    const server = SOCKET
+      ? app.listen(SOCKET, started)
+      : app.listen(Number(PORT), HOST as string, started);
 
-    // Graceful shutdown. A deploy exits with DEPLOY_EXIT_CODE so start.sh relaunches the new build.
-    let deployHook: ReturnType<typeof startDeployHook> = null;
+    // Graceful shutdown
     const gracefulShutdown = (signal: string, exitCode = 0) => {
       logger.info({ signal }, 'Graceful shutdown initiated');
-      deployHook?.close();
 
       server.close(() => {
         logger.info('HTTP server closed');
@@ -223,8 +231,6 @@ async function startServer() {
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-    deployHook = startDeployHook(() => gracefulShutdown('deploy', DEPLOY_EXIT_CODE));
 
   } catch (error) {
     logger.fatal({ err: error }, 'Failed to start server');

@@ -176,41 +176,28 @@ Client runs on http://localhost:5173
 
 ### Live (grizzly, auto-deploy on push)
 
-Deployed the standard grizzly way (the `grizzly-service` skill; same as pasters, musiclinks,
-basegame). vidz.jobe.wtf / vidzapi.jobe.wtf run from `~jobe/webs/vidz.jobe.wtf` under
-[`deploy/jobevidz.service`](deploy/jobevidz.service), which runs [`start.sh`](start.sh): it
-loads `.env` (checkout root, 600), runs [`scripts/release-build.sh`](scripts/release-build.sh)
-(a no-op when this commit is already built) and relaunches the API whenever it exits with
-code 42. The API listens on `127.0.0.1:3020`; Apache serves `client/dist` and proxies the
-API. The vhosts live in jobepanel (`servers/grizzly/apache/sites-available/jobe.wtf.conf`).
-Videos and state are in `uploads/` and `data/`.
+Push to `main`: CI builds both halves, then POSTs an HMAC-signed request to
+`https://deploy.jobe.wtf/jobevidz` (Actions secrets `DEPLOY_WEBHOOK_URL`,
+`DEPLOY_WEBHOOK_SECRET`). That is deployd, grizzly's deploy agent (jobeus/jobepanel,
+`servers/grizzly/deployd`): it checks the commit out into a new folder, runs
+[`scripts/release-build.sh`](scripts/release-build.sh) there while the old version keeps serving, switches to it, restarts the app
+and checks that `/health` answers. A failed build never touches the running version, and a
+release that doesn't answer is switched back automatically.
 
-Every push to `main` runs CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), which
-builds both halves and then POSTs a signed hook to `https://vidzapi.jobe.wtf/__deploy`:
+On grizzly everything is under `/srv/apps/jobevidz`: `current` is the live release, and
+`shared/` holds what outlives releases, linked into each one: `.env` (600), `client/.env`
+(the client's build settings), `uploads/` (videos, thumbnails, metadata) and `data/`. The
+unit is `app@jobevidz` (a template in jobepanel); it sets
+`APP_SOCKET=/run/apps/jobevidz/app.sock` and the API listens there. Apache serves
+`/srv/apps/jobevidz/current/client/dist` for vidz.jobe.wtf and proxies the API to the socket
+(vhosts in jobepanel, `servers/grizzly/apache/sites-available/jobe.wtf.conf`).
 
 ```
-POST /deploy
-X-Deploy-Timestamp: <unix seconds>
-X-Deploy-Signature: sha256=<hex HMAC-SHA256 of "<timestamp>.<body>">
-{"sha": "<commit>", "ref": "refs/heads/main"}
+deploy status               # what is live, on grizzly
+deploy jobevidz               # deploy main by hand (or: deploy jobevidz <commit>)
+deploy rollback jobevidz      # back to the release before
+journalctl -u app@jobevidz -f       # app log;  journalctl -u deployd -f  for deploys
 ```
-
-[`server/src/utils/deployHook.ts`](server/src/utils/deployHook.ts) rejects bad signatures or
-timestamps more than 5 minutes off (401), answers `up-to-date` if already on that sha,
-otherwise answers 202 and in the background runs `git pull --ff-only` and
-`scripts/release-build.sh` (the client is built into `client/dist-next` and swapped in), then
-exits with code 42 so `start.sh` relaunches it. A failed pull or build is logged and the old
-build keeps running.
-
-| var (`.env`) | default | |
-|---|---|---|
-| `DEPLOY_WEBHOOK_SECRET` | unset | shared HMAC secret (also the Actions secret); the listener is off when empty |
-| `DEPLOY_WEBHOOK_HOST` | `127.0.0.1` | listener interface |
-| `DEPLOY_WEBHOOK_PORT` | `8790` | listener port |
-| `DEPLOY_BUILD_COMMAND` | `./scripts/release-build.sh` | run after the pull, in the checkout |
-
-Manual deploy, as jobe in the checkout: `git pull && sudo systemctl restart jobevidz`.
-Logs: `journalctl -u jobevidz -f`.
 
 Thumbnails (1200×630 JPEG, padded to keep the aspect ratio) are made on upload. To create any that are missing, run `node server/dist/backfillThumbnails.js` (add `--dry-run` to preview) as jobe in the checkout; it is safe to re-run.
 
@@ -343,8 +330,8 @@ Use the `/health` endpoint for:
 - **Video Player**: HTML5 Video with custom controls
 
 ### Infrastructure
-- **Process Manager**: systemd (`deploy/jobevidz.service` → `start.sh`, relaunch on exit 42)
-- **Reverse Proxy**: Apache on grizzly (TLS, static client, `/__deploy`)
+- **Process Manager**: systemd (`app@jobevidz`, a template unit in jobepanel → `start.sh`)
+- **Reverse Proxy**: Apache on grizzly (TLS, static client, API on a unix socket)
 - **Storage**: File-based (videos, metadata, user data)
 
 ---
@@ -390,7 +377,7 @@ jobevidz/
 │   ├── users.json        # User accounts
 │   └── shortids.json     # Short URL mappings
 ├── scripts/
-│   └── release-build.sh  # Install + build both halves (start.sh and the deploy hook run it)
+│   └── release-build.sh  # Install + build both halves (deployd runs it for each release)
 ├── deploy/jobevidz.service  # systemd unit on grizzly
 ├── start.sh              # Loads .env, builds, runs the API, relaunches on exit 42
 ├── README.md             # This file
